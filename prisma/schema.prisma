@@ -89,8 +89,10 @@ model Order {
   orderDate     DateTime      @default(now())
   productLink   String?
   purchaseType  PurchaseType
-  cost          Decimal       @db.Decimal(10, 2)
-  salePrice     Decimal       @db.Decimal(10, 2)
+  costUsd       Decimal?      @db.Decimal(10, 2) // costo en USD tal como se compra (solo aplica a ADVANCE; tiendas/online cobran en $)
+  exchangeRate  Decimal       @db.Decimal(10, 4) // tipo de cambio USD->GTQ vigente al crear el pedido (snapshot histórico)
+  cost          Decimal       @db.Decimal(10, 2) // costo en quetzales: costUsd * exchangeRate (ADVANCE) o costo directo en Q (COURIER)
+  salePrice     Decimal       @db.Decimal(10, 2) // precio cobrado al cliente, siempre en quetzales
   confirmed     Boolean       @default(false)
   packed        Boolean       @default(false)
   packedIn      PackingMethod?
