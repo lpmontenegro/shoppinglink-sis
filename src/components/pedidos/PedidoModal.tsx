@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import Modal from '@/components/Modal'
 import { formatGTQ, usdToGtq } from '@/lib/currency'
+import { suggestedSalePriceUsd } from '@/lib/pricing'
 
 type ClienteOption = { id: string; fullName: string }
 type CicloOption = { id: string; code: string; status: string }
@@ -77,6 +78,29 @@ export default function PedidoModal({
     if (!rate || !Number.isFinite(usd)) return null
     return usdToGtq(usd, rate)
   }, [costUsd, rate])
+
+  const suggestedPrice = useMemo(() => {
+    const usd = parseFloat(costUsd)
+    if (!rate || !Number.isFinite(usd) || usd <= 0) return null
+    return usdToGtq(suggestedSalePriceUsd(usd), rate)
+  }, [costUsd, rate])
+
+  const currentCostQ = useMemo(() => {
+    if (purchaseType === 'ADVANCE') return computedCost
+    const n = parseFloat(cost)
+    return Number.isFinite(n) ? n : null
+  }, [purchaseType, computedCost, cost])
+
+  const profit = useMemo(() => {
+    const price = parseFloat(salePrice)
+    if (!Number.isFinite(price) || currentCostQ == null) return null
+    return price - currentCostQ
+  }, [salePrice, currentCostQ])
+
+  function formatOnBlur(value: string, setValue: (v: string) => void) {
+    const n = parseFloat(value)
+    if (Number.isFinite(n)) setValue(n.toFixed(2))
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -230,6 +254,7 @@ export default function PedidoModal({
                 min="0"
                 value={costUsd}
                 onChange={(e) => setCostUsd(e.target.value)}
+                onBlur={(e) => formatOnBlur(e.target.value, setCostUsd)}
                 className="w-full px-3 py-2 border border-brand-gray rounded"
               />
               <p className="mt-1 text-xs text-brand-gray-dk">
@@ -239,6 +264,18 @@ export default function PedidoModal({
                     ? 'Cargando tipo de cambio...'
                     : ''}
               </p>
+              {suggestedPrice != null && (
+                <p className="mt-1 text-xs text-brand-gray-dk">
+                  Precio sugerido: {formatGTQ(suggestedPrice)}{' '}
+                  <button
+                    type="button"
+                    onClick={() => setSalePrice(suggestedPrice.toFixed(2))}
+                    className="text-brand-blue underline"
+                  >
+                    usar
+                  </button>
+                </p>
+              )}
             </div>
           </>
         ) : (
@@ -250,6 +287,7 @@ export default function PedidoModal({
               min="0"
               value={cost}
               onChange={(e) => setCost(e.target.value)}
+              onBlur={(e) => formatOnBlur(e.target.value, setCost)}
               className="w-full px-3 py-2 border border-brand-gray rounded"
             />
           </div>
@@ -264,8 +302,14 @@ export default function PedidoModal({
             min="0"
             value={salePrice}
             onChange={(e) => setSalePrice(e.target.value)}
+            onBlur={(e) => formatOnBlur(e.target.value, setSalePrice)}
             className="w-full px-3 py-2 border border-brand-gray rounded"
           />
+          {profit != null && (
+            <p className={`mt-1 text-xs ${profit >= 0 ? 'text-green-700' : 'text-red-600'}`}>
+              Ganancia: {formatGTQ(profit)}
+            </p>
+          )}
         </div>
 
         <div>

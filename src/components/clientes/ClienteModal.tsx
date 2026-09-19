@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import Modal from '@/components/Modal'
+import PickupPlaceSelect from './PickupPlaceSelect'
+import { COUNTRY_CODES, DEFAULT_COUNTRY_CODE, joinPhone, splitPhone } from '@/lib/phone'
 
 type Cliente = {
   id: string
@@ -9,8 +11,17 @@ type Cliente = {
   phones: string[]
   deliveryAddress: string
   zone: string
+  fulfillmentMethod: string
+  pickupPlaceId: string | null
   notes: string | null
   active: boolean
+}
+
+type PhoneEntry = { code: string; number: string }
+
+function initialPhones(phones?: string[]): PhoneEntry[] {
+  if (!phones?.length) return [{ code: DEFAULT_COUNTRY_CODE, number: '' }]
+  return phones.map(splitPhone)
 }
 
 export default function ClienteModal({
@@ -23,20 +34,22 @@ export default function ClienteModal({
   onSaved: () => void
 }) {
   const [fullName, setFullName] = useState(cliente?.fullName ?? '')
-  const [phones, setPhones] = useState<string[]>(cliente?.phones?.length ? cliente.phones : [''])
+  const [phones, setPhones] = useState<PhoneEntry[]>(initialPhones(cliente?.phones))
   const [deliveryAddress, setDeliveryAddress] = useState(cliente?.deliveryAddress ?? '')
   const [zone, setZone] = useState(cliente?.zone ?? '')
+  const [fulfillmentMethod, setFulfillmentMethod] = useState(cliente?.fulfillmentMethod ?? 'DELIVERY')
+  const [pickupPlaceId, setPickupPlaceId] = useState(cliente?.pickupPlaceId ?? '')
   const [notes, setNotes] = useState(cliente?.notes ?? '')
   const [active, setActive] = useState(cliente?.active ?? true)
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
-  function updatePhone(i: number, value: string) {
-    setPhones((prev) => prev.map((p, idx) => (idx === i ? value : p)))
+  function updatePhone(i: number, field: 'code' | 'number', value: string) {
+    setPhones((prev) => prev.map((p, idx) => (idx === i ? { ...p, [field]: value } : p)))
   }
 
   function addPhone() {
-    setPhones((prev) => [...prev, ''])
+    setPhones((prev) => [...prev, { code: DEFAULT_COUNTRY_CODE, number: '' }])
   }
 
   function removePhone(i: number) {
@@ -50,9 +63,11 @@ export default function ClienteModal({
 
     const payload = {
       fullName,
-      phones: phones.map((p) => p.trim()).filter(Boolean),
+      phones: phones.map((p) => joinPhone(p.code, p.number)).filter(Boolean),
       deliveryAddress,
       zone,
+      fulfillmentMethod,
+      pickupPlaceId: fulfillmentMethod === 'PICKUP' ? pickupPlaceId || null : null,
       notes,
       active,
     }
@@ -96,10 +111,22 @@ export default function ClienteModal({
           <label className="block text-sm mb-1">Teléfonos</label>
           {phones.map((phone, i) => (
             <div key={i} className="flex gap-2 mb-2">
+              <select
+                value={phone.code}
+                onChange={(e) => updatePhone(i, 'code', e.target.value)}
+                className="px-2 py-2 border border-brand-gray rounded text-sm w-28 shrink-0"
+              >
+                {COUNTRY_CODES.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.code}
+                  </option>
+                ))}
+              </select>
               <input
                 required={i === 0}
-                value={phone}
-                onChange={(e) => updatePhone(i, e.target.value)}
+                placeholder="0000-0000"
+                value={phone.number}
+                onChange={(e) => updatePhone(i, 'number', e.target.value)}
                 className="flex-1 px-3 py-2 border border-brand-gray rounded"
               />
               {phones.length > 1 && (
@@ -123,21 +150,44 @@ export default function ClienteModal({
         </div>
 
         <div>
-          <label className="block text-sm mb-1">Dirección de entrega</label>
-          <input
-            value={deliveryAddress}
-            onChange={(e) => setDeliveryAddress(e.target.value)}
-            className="w-full px-3 py-2 border border-brand-gray rounded"
-          />
-        </div>
+          <label className="block text-sm mb-1">Forma de entrega</label>
+          <div className="flex gap-4 text-sm mb-2">
+            <label className="flex items-center gap-1">
+              <input
+                type="radio"
+                checked={fulfillmentMethod === 'DELIVERY'}
+                onChange={() => setFulfillmentMethod('DELIVERY')}
+              />
+              Delivery (por zona)
+            </label>
+            <label className="flex items-center gap-1">
+              <input
+                type="radio"
+                checked={fulfillmentMethod === 'PICKUP'}
+                onChange={() => setFulfillmentMethod('PICKUP')}
+              />
+              Pickup (punto fijo)
+            </label>
+          </div>
 
-        <div>
-          <label className="block text-sm mb-1">Zona</label>
-          <input
-            value={zone}
-            onChange={(e) => setZone(e.target.value)}
-            className="w-full px-3 py-2 border border-brand-gray rounded"
-          />
+          {fulfillmentMethod === 'PICKUP' ? (
+            <PickupPlaceSelect value={pickupPlaceId} onChange={setPickupPlaceId} />
+          ) : (
+            <div className="space-y-2">
+              <input
+                placeholder="Dirección de entrega"
+                value={deliveryAddress}
+                onChange={(e) => setDeliveryAddress(e.target.value)}
+                className="w-full px-3 py-2 border border-brand-gray rounded"
+              />
+              <input
+                placeholder="Zona"
+                value={zone}
+                onChange={(e) => setZone(e.target.value)}
+                className="w-full px-3 py-2 border border-brand-gray rounded"
+              />
+            </div>
+          )}
         </div>
 
         <div>

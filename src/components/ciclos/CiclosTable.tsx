@@ -15,7 +15,8 @@ type Ciclo = {
   travelDepartDate: string | Date | null
   travelReturnDate: string | Date | null
   boxArrivalDate: string | Date | null
-  cycleDeliveryAddress: string | null
+  usAddressId: string | null
+  usAddress: { name: string } | null
   notes: string | null
 }
 
@@ -55,6 +56,7 @@ export default function CiclosTable({ ciclos }: { ciclos: Ciclo[] }) {
               <th className="px-4 py-2">Estado</th>
               <th className="px-4 py-2">Apertura</th>
               <th className="px-4 py-2">Viaje</th>
+              <th className="px-4 py-2">Dirección USA</th>
               <th className="px-4 py-2"></th>
             </tr>
           </thead>
@@ -72,6 +74,7 @@ export default function CiclosTable({ ciclos }: { ciclos: Ciclo[] }) {
                 <td className="px-4 py-2">
                   {c.travelDepartDate ? `${fmt(c.travelDepartDate)} – ${fmt(c.travelReturnDate)}` : '—'}
                 </td>
+                <td className="px-4 py-2">{c.usAddress?.name ?? '—'}</td>
                 <td className="px-4 py-2 text-right">
                   <button onClick={() => setEditing(c)} className="text-brand-blue">
                     Editar
@@ -81,7 +84,7 @@ export default function CiclosTable({ ciclos }: { ciclos: Ciclo[] }) {
             ))}
             {ciclos.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-6 text-center text-brand-gray-dk">
+                <td colSpan={6} className="px-4 py-6 text-center text-brand-gray-dk">
                   No hay ciclos todavía.
                 </td>
               </tr>

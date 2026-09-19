@@ -17,7 +17,12 @@ export const cicloSchema = z.object({
   travelDepartDate: z.coerce.date().optional().nullable(),
   travelReturnDate: z.coerce.date().optional().nullable(),
   boxArrivalDate: z.coerce.date().optional().nullable(),
-  cycleDeliveryAddress: z.string().trim().optional().nullable(),
+  usAddressId: z
+    .string()
+    .trim()
+    .optional()
+    .nullable()
+    .transform((v) => (v ? v : null)),
   notes: z.string().trim().optional().nullable(),
 })
 

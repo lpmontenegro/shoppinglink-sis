@@ -10,6 +10,9 @@ type Cliente = {
   phones: string[]
   deliveryAddress: string
   zone: string
+  fulfillmentMethod: string
+  pickupPlaceId: string | null
+  pickupPlace: { name: string } | null
   notes: string | null
   active: boolean
 }
@@ -54,6 +57,7 @@ export default function ClientesTable({ clientes }: { clientes: Cliente[] }) {
               <th className="px-4 py-2">Teléfonos</th>
               <th className="px-4 py-2">Zona</th>
               <th className="px-4 py-2">Dirección</th>
+              <th className="px-4 py-2">Entrega</th>
               <th className="px-4 py-2">Estado</th>
               <th className="px-4 py-2"></th>
             </tr>
@@ -65,6 +69,11 @@ export default function ClientesTable({ clientes }: { clientes: Cliente[] }) {
                 <td className="px-4 py-2">{c.phones.join(', ')}</td>
                 <td className="px-4 py-2">{c.zone || '—'}</td>
                 <td className="px-4 py-2">{c.deliveryAddress || '—'}</td>
+                <td className="px-4 py-2">
+                  {c.fulfillmentMethod === 'PICKUP'
+                    ? `Pickup: ${c.pickupPlace?.name ?? '—'}`
+                    : 'Delivery'}
+                </td>
                 <td className="px-4 py-2">
                   <span
                     className={
@@ -94,7 +103,7 @@ export default function ClientesTable({ clientes }: { clientes: Cliente[] }) {
             ))}
             {clientes.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-brand-gray-dk">
+                <td colSpan={7} className="px-4 py-6 text-center text-brand-gray-dk">
                   No hay clientes todavía.
                 </td>
               </tr>

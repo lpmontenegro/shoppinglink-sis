@@ -21,41 +21,85 @@ model User {
 // ─── MASTER DATA ─────────────────────────────────────────────────────────────
 
 model Client {
-  id              String   @id @default(cuid())
-  fullName        String
-  phones          String[]
-  deliveryAddress String
-  zone            String
-  notes           String?
-  active          Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id                String            @id @default(cuid())
+  fullName          String
+  phones            String[]
+  deliveryAddress   String
+  zone              String
+  fulfillmentMethod FulfillmentMethod @default(DELIVERY)
+  pickupPlaceId     String?
+  notes             String?
+  active            Boolean           @default(true)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
 
-  orders          Order[]
-  statements      ClientStatement[]
+  pickupPlace      PickupPlace?      @relation(fields: [pickupPlaceId], references: [id])
+  orders           Order[]
+  statements       ClientStatement[]
   storeOrderClaims StoreOrderClaim[]
+}
+
+enum FulfillmentMethod {
+  PICKUP    // el cliente recoge en un punto fijo
+  DELIVERY  // se le entrega por zona
+}
+
+// Puntos de recolección en Guatemala (ej. oficina, casa de una encargada de
+// zona) donde los clientes con fulfillmentMethod = PICKUP recogen su pedido.
+// Se reutilizan entre ciclos, por eso son tabla maestra aparte.
+model PickupPlace {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  address     String
+  responsible String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  clients Client[]
 }
 
 // ─── CYCLES ──────────────────────────────────────────────────────────────────
 
 model Cycle {
-  id                  String       @id @default(cuid())
-  code                String       @unique
-  status              CycleStatus  @default(OPEN)
-  openDate            DateTime
-  closeDate           DateTime?
-  travelDepartDate    DateTime?
-  travelReturnDate    DateTime?
-  boxArrivalDate      DateTime?
-  cycleDeliveryAddress String?     // where clients' online/courier packages are received this cycle
-  notes               String?
-  createdAt           DateTime     @default(now())
-  updatedAt           DateTime     @updatedAt
+  id               String      @id @default(cuid())
+  code             String      @unique
+  status           CycleStatus @default(OPEN)
+  openDate         DateTime
+  closeDate        DateTime?
+  travelDepartDate DateTime?
+  travelReturnDate DateTime?
+  boxArrivalDate   DateTime? // llegada de la caja de courier/online (la maleta la traen las dueñas al regresar del viaje, ver travelReturnDate)
+  usAddressId      String? // dirección en USA donde se reciben los paquetes online/courier este ciclo
+  notes            String?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
 
+  usAddress  UsAddress?        @relation(fields: [usAddressId], references: [id])
   orders     Order[]
   expenses   CycleExpense[]
   storeOrders StoreOrder[]
   statements ClientStatement[]
+}
+
+// Direcciones de recepción en USA, reutilizables entre ciclos (bodega propia,
+// dirección de un contacto, etc.) — evita re-escribir la misma dirección cada
+// ciclo.
+model UsAddress {
+  id          String   @id @default(cuid())
+  name        String // nombre corto para identificarla en el combo, ej. "Bodega Miami"
+  description String?
+  addressLine String
+  city        String
+  state       String
+  zip         String
+  phone       String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  cycles Cycle[]
 }
 
 enum CycleStatus {

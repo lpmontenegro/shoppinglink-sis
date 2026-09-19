@@ -3,6 +3,7 @@ import CiclosTable from '@/components/ciclos/CiclosTable'
 
 export default async function CiclosPage() {
   const ciclos = await prisma.cycle.findMany({
+    include: { usAddress: true },
     orderBy: { openDate: 'desc' },
   })
 

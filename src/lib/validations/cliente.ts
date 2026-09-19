@@ -3,16 +3,28 @@ import { z } from 'zod'
 // deliveryAddress y zone quedan opcionales a propósito: un cliente puede
 // crearse rápido desde Pedidos (viene de WhatsApp, solo se sabe nombre y
 // teléfono) y completarse después desde la pantalla de Clientes.
-export const clienteSchema = z.object({
-  fullName: z.string().trim().min(1, 'El nombre es requerido'),
-  phones: z
-    .array(z.string().trim().min(1))
-    .min(1, 'Se necesita al menos un teléfono'),
-  deliveryAddress: z.string().trim().optional().default(''),
-  zone: z.string().trim().optional().default(''),
-  notes: z.string().trim().optional().nullable(),
-  active: z.boolean().optional().default(true),
-})
+export const clienteSchema = z
+  .object({
+    fullName: z.string().trim().min(1, 'El nombre es requerido'),
+    phones: z
+      .array(z.string().trim().min(1))
+      .min(1, 'Se necesita al menos un teléfono'),
+    deliveryAddress: z.string().trim().optional().default(''),
+    zone: z.string().trim().optional().default(''),
+    fulfillmentMethod: z.enum(['PICKUP', 'DELIVERY']).optional().default('DELIVERY'),
+    pickupPlaceId: z
+      .string()
+      .trim()
+      .optional()
+      .nullable()
+      .transform((v) => (v ? v : null)),
+    notes: z.string().trim().optional().nullable(),
+    active: z.boolean().optional().default(true),
+  })
+  .refine((data) => data.fulfillmentMethod !== 'PICKUP' || !!data.pickupPlaceId, {
+    message: 'Selecciona un punto de recolección',
+    path: ['pickupPlaceId'],
+  })
 
 export type ClienteInput = z.infer<typeof clienteSchema>
 

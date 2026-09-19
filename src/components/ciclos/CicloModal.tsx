@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Modal from '@/components/Modal'
+import UsAddressSelect from './UsAddressSelect'
 import { CYCLE_STATUS_LABELS } from '@/lib/cycleStatus'
 
 type Ciclo = {
@@ -13,7 +14,7 @@ type Ciclo = {
   travelDepartDate: string | Date | null
   travelReturnDate: string | Date | null
   boxArrivalDate: string | Date | null
-  cycleDeliveryAddress: string | null
+  usAddressId: string | null
   notes: string | null
 }
 
@@ -40,7 +41,7 @@ export default function CicloModal({
   const [travelDepartDate, setTravelDepartDate] = useState(toDateInput(ciclo?.travelDepartDate))
   const [travelReturnDate, setTravelReturnDate] = useState(toDateInput(ciclo?.travelReturnDate))
   const [boxArrivalDate, setBoxArrivalDate] = useState(toDateInput(ciclo?.boxArrivalDate))
-  const [cycleDeliveryAddress, setCycleDeliveryAddress] = useState(ciclo?.cycleDeliveryAddress ?? '')
+  const [usAddressId, setUsAddressId] = useState(ciclo?.usAddressId ?? '')
   const [notes, setNotes] = useState(ciclo?.notes ?? '')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
@@ -58,7 +59,7 @@ export default function CicloModal({
       travelDepartDate: travelDepartDate || null,
       travelReturnDate: travelReturnDate || null,
       boxArrivalDate: boxArrivalDate || null,
-      cycleDeliveryAddress,
+      usAddressId: usAddressId || null,
       notes,
     }
 
@@ -158,24 +159,25 @@ export default function CicloModal({
             />
           </div>
           <div className="col-span-2">
-            <label className="block text-sm mb-1">Llegada de maleta/caja</label>
+            <label className="block text-sm mb-1">Llegada de caja</label>
             <input
               type="date"
               value={boxArrivalDate}
               onChange={(e) => setBoxArrivalDate(e.target.value)}
               className="w-full px-3 py-2 border border-brand-gray rounded"
             />
+            <p className="mt-1 text-xs text-brand-gray-dk">
+              La maleta la traen las administradoras al regresar del viaje (ver fecha de regreso arriba); esta fecha es solo para la caja de courier/online.
+            </p>
           </div>
         </div>
 
         <div>
-          <label className="block text-sm mb-1">Dirección de entrega del ciclo</label>
-          <input
-            value={cycleDeliveryAddress ?? ''}
-            onChange={(e) => setCycleDeliveryAddress(e.target.value)}
-            placeholder="Dónde se reciben los paquetes online/courier este ciclo"
-            className="w-full px-3 py-2 border border-brand-gray rounded"
-          />
+          <label className="block text-sm mb-1">Dirección de recepción en USA</label>
+          <UsAddressSelect value={usAddressId} onChange={setUsAddressId} />
+          <p className="mt-1 text-xs text-brand-gray-dk">
+            Dónde se reciben los paquetes online/courier este ciclo.
+          </p>
         </div>
 
         <div>
