@@ -7,5 +7,9 @@ export default async function CiclosPage() {
     orderBy: { openDate: 'desc' },
   })
 
-  return <CiclosTable ciclos={ciclos} />
+  // Prisma's Decimal no se puede pasar tal cual de un Server Component a un
+  // Client Component — se convierte a number antes de bajarlo como prop.
+  const plainCiclos = ciclos.map((c) => ({ ...c, taxRate: Number(c.taxRate) }))
+
+  return <CiclosTable ciclos={plainCiclos} />
 }

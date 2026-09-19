@@ -8,8 +8,8 @@ export default async function Home() {
       where: { status: 'OPEN' },
       orderBy: { openDate: 'desc' },
     }),
-    prisma.order.count({
-      where: { canceled: false, delivered: false, cycle: { status: 'OPEN' } },
+    prisma.orderItem.count({
+      where: { canceled: false, delivered: false, order: { cycle: { status: 'OPEN' } } },
     }),
   ])
 
@@ -48,7 +48,7 @@ export default async function Home() {
           href="/pedidos"
           className="block bg-white border border-brand-gray rounded-lg p-5 hover:border-brand-blue"
         >
-          <p className="text-sm text-brand-gray-dk">Pedidos pendientes (ciclo abierto)</p>
+          <p className="text-sm text-brand-gray-dk">Productos pendientes (ciclo abierto)</p>
           <p className="mt-1 text-3xl font-bold text-brand-black">{pendingOrders}</p>
         </Link>
       </div>

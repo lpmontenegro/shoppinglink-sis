@@ -2,11 +2,12 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Modal from '@/components/Modal'
+import MoneyInput from '@/components/MoneyInput'
 import { formatGTQ, usdToGtq } from '@/lib/currency'
-import { suggestedSalePriceUsd } from '@/lib/pricing'
+import { costWithTax, DEFAULT_TAX_RATE, suggestedSalePriceUsd } from '@/lib/pricing'
 
 type ClienteOption = { id: string; fullName: string }
-type CicloOption = { id: string; code: string; status: string }
+type CicloOption = { id: string; code: string; status: string; taxRate: number }
 
 function extractErrorMessage(data: any, fallback: string): string {
   if (!data?.error) return fallback
@@ -21,16 +22,192 @@ function extractErrorMessage(data: any, fallback: string): string {
   return fallback
 }
 
-type Pedido = {
+type PedidoItem = {
   id: string
-  clientId: string
-  cycleId: string
-  purchaseType: 'ADVANCE' | 'COURIER'
   productLink: string | null
+  purchaseType: 'ADVANCE' | 'COURIER'
   costUsd: string | number | null
   cost: string | number
   salePrice: string | number
   notes: string | null
+}
+
+type Pedido = {
+  id: string
+  clientId: string
+  cycleId: string
+  notes: string | null
+  items: PedidoItem[]
+}
+
+type ItemState = {
+  id?: string
+  purchaseType: 'ADVANCE' | 'COURIER'
+  productLink: string
+  costUsd: string
+  cost: string
+  salePrice: string
+  notes: string
+}
+
+function emptyItem(): ItemState {
+  return { purchaseType: 'ADVANCE', productLink: '', costUsd: '', cost: '', salePrice: '', notes: '' }
+}
+
+function itemsFromPedido(pedido?: Pedido | null): ItemState[] {
+  if (!pedido?.items?.length) return [emptyItem()]
+  return pedido.items.map((i) => ({
+    id: i.id,
+    purchaseType: i.purchaseType,
+    productLink: i.productLink ?? '',
+    costUsd: i.costUsd != null ? String(i.costUsd) : '',
+    cost: String(i.cost),
+    salePrice: String(i.salePrice),
+    notes: i.notes ?? '',
+  }))
+}
+
+function OrderItemFields({
+  item,
+  index,
+  rate,
+  taxRate,
+  onChange,
+  onRemove,
+}: {
+  item: ItemState
+  index: number
+  rate: number | null
+  taxRate: number
+  onChange: (patch: Partial<ItemState>) => void
+  onRemove?: () => void
+}) {
+  const computedCost = useMemo(() => {
+    const usd = parseFloat(item.costUsd)
+    if (!rate || !Number.isFinite(usd)) return null
+    return usdToGtq(usd, rate)
+  }, [item.costUsd, rate])
+
+  // Costo + impuesto de compra — la base real sobre la que se calcula la
+  // ganancia (el impuesto solo aplica a compras anticipadas: en courier el
+  // cliente ya compró, Shopping Link solo cobra un fee de traída).
+  const costBasisQ = useMemo(() => {
+    if (item.purchaseType === 'ADVANCE') {
+      if (computedCost == null) return null
+      return costWithTax(computedCost, taxRate)
+    }
+    const n = parseFloat(item.cost)
+    return Number.isFinite(n) ? n : null
+  }, [item.purchaseType, computedCost, item.cost, taxRate])
+
+  const suggestedPrice = useMemo(() => {
+    const usd = parseFloat(item.costUsd)
+    if (!rate || !Number.isFinite(usd) || usd <= 0) return null
+    return usdToGtq(suggestedSalePriceUsd(usd, taxRate), rate)
+  }, [item.costUsd, rate, taxRate])
+
+  const profit = useMemo(() => {
+    const price = parseFloat(item.salePrice)
+    if (!Number.isFinite(price) || costBasisQ == null) return null
+    return price - costBasisQ
+  }, [item.salePrice, costBasisQ])
+
+  return (
+    <div className="relative border border-brand-gray rounded-lg p-3">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs font-medium text-brand-gray-dk">Producto {index + 1}</span>
+        {onRemove && (
+          <button
+            type="button"
+            onClick={onRemove}
+            className="text-brand-gray-dk hover:text-red-600 text-lg leading-none px-1"
+            aria-label="Quitar producto"
+          >
+            &times;
+          </button>
+        )}
+      </div>
+
+      <div className="flex gap-4 text-sm mb-2">
+        <label className="flex items-center gap-1">
+          <input
+            type="radio"
+            checked={item.purchaseType === 'ADVANCE'}
+            onChange={() => onChange({ purchaseType: 'ADVANCE' })}
+          />
+          Compra anticipada
+        </label>
+        <label className="flex items-center gap-1">
+          <input
+            type="radio"
+            checked={item.purchaseType === 'COURIER'}
+            onChange={() => onChange({ purchaseType: 'COURIER' })}
+          />
+          Courier
+        </label>
+      </div>
+
+      {item.purchaseType === 'ADVANCE' ? (
+        <div className="space-y-2">
+          <input
+            placeholder="Link del producto"
+            value={item.productLink}
+            onChange={(e) => onChange({ productLink: e.target.value })}
+            className="w-full px-3 py-2 border border-brand-gray rounded"
+          />
+          <div>
+            <label className="block text-xs text-brand-gray-dk mb-1">Costo (USD)</label>
+            <MoneyInput required prefix="$" value={item.costUsd} onChange={(v) => onChange({ costUsd: v })} />
+            <p className="mt-1 text-xs text-brand-gray-dk">
+              {computedCost != null
+                ? `≈ ${formatGTQ(computedCost)} al tipo de cambio actual · ${formatGTQ(costWithTax(computedCost, taxRate))} con impuesto (${taxRate}%)`
+                : rate == null
+                  ? 'Cargando tipo de cambio...'
+                  : ''}
+            </p>
+            {suggestedPrice != null && (
+              <p className="mt-1 text-xs text-brand-gray-dk">
+                Precio sugerido: {formatGTQ(suggestedPrice)}{' '}
+                <button
+                  type="button"
+                  onClick={() => onChange({ salePrice: suggestedPrice.toFixed(2) })}
+                  className="text-brand-blue underline"
+                >
+                  usar
+                </button>
+              </p>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div>
+          <label className="block text-xs text-brand-gray-dk mb-1">
+            Costo (Q) — si Shopping Link cobra algo por traerlo
+          </label>
+          <MoneyInput prefix="Q" value={item.cost} onChange={(v) => onChange({ cost: v })} />
+        </div>
+      )}
+
+      <div className="mt-2">
+        <label className="block text-xs text-brand-gray-dk mb-1">Precio de venta al cliente (Q)</label>
+        <MoneyInput required prefix="Q" value={item.salePrice} onChange={(v) => onChange({ salePrice: v })} />
+        {profit != null && (
+          <p className={`mt-1 text-xs ${profit >= 0 ? 'text-green-700' : 'text-red-600'}`}>
+            Ganancia: {formatGTQ(profit)}
+          </p>
+        )}
+      </div>
+
+      <div className="mt-2">
+        <input
+          placeholder="Notas de este producto (opcional)"
+          value={item.notes}
+          onChange={(e) => onChange({ notes: e.target.value })}
+          className="w-full px-3 py-2 border border-brand-gray rounded text-sm"
+        />
+      </div>
+    </div>
+  )
 }
 
 export default function PedidoModal({
@@ -54,14 +231,8 @@ export default function PedidoModal({
   const [newClientPhone, setNewClientPhone] = useState('')
 
   const [cycleId, setCycleId] = useState(pedido?.cycleId ?? defaultCycleId ?? '')
-  const [purchaseType, setPurchaseType] = useState<'ADVANCE' | 'COURIER'>(
-    pedido?.purchaseType ?? 'ADVANCE'
-  )
-  const [productLink, setProductLink] = useState(pedido?.productLink ?? '')
-  const [costUsd, setCostUsd] = useState(pedido?.costUsd != null ? String(pedido.costUsd) : '')
-  const [cost, setCost] = useState(pedido ? String(pedido.cost) : '')
-  const [salePrice, setSalePrice] = useState(pedido ? String(pedido.salePrice) : '')
   const [notes, setNotes] = useState(pedido?.notes ?? '')
+  const [items, setItems] = useState<ItemState[]>(itemsFromPedido(pedido))
   const [rate, setRate] = useState<number | null>(null)
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
@@ -73,33 +244,20 @@ export default function PedidoModal({
       .catch(() => setRate(null))
   }, [])
 
-  const computedCost = useMemo(() => {
-    const usd = parseFloat(costUsd)
-    if (!rate || !Number.isFinite(usd)) return null
-    return usdToGtq(usd, rate)
-  }, [costUsd, rate])
+  const selectedCycleTaxRate = useMemo(() => {
+    return ciclos.find((c) => c.id === cycleId)?.taxRate ?? DEFAULT_TAX_RATE
+  }, [ciclos, cycleId])
 
-  const suggestedPrice = useMemo(() => {
-    const usd = parseFloat(costUsd)
-    if (!rate || !Number.isFinite(usd) || usd <= 0) return null
-    return usdToGtq(suggestedSalePriceUsd(usd), rate)
-  }, [costUsd, rate])
+  function updateItem(i: number, patch: Partial<ItemState>) {
+    setItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, ...patch } : it)))
+  }
 
-  const currentCostQ = useMemo(() => {
-    if (purchaseType === 'ADVANCE') return computedCost
-    const n = parseFloat(cost)
-    return Number.isFinite(n) ? n : null
-  }, [purchaseType, computedCost, cost])
+  function addItem() {
+    setItems((prev) => [...prev, emptyItem()])
+  }
 
-  const profit = useMemo(() => {
-    const price = parseFloat(salePrice)
-    if (!Number.isFinite(price) || currentCostQ == null) return null
-    return price - currentCostQ
-  }, [salePrice, currentCostQ])
-
-  function formatOnBlur(value: string, setValue: (v: string) => void) {
-    const n = parseFloat(value)
-    if (Number.isFinite(n)) setValue(n.toFixed(2))
+  function removeItem(i: number) {
+    setItems((prev) => prev.filter((_, idx) => idx !== i))
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -109,12 +267,16 @@ export default function PedidoModal({
 
     const payload: Record<string, unknown> = {
       cycleId,
-      purchaseType,
-      productLink: purchaseType === 'ADVANCE' ? productLink : null,
-      costUsd: purchaseType === 'ADVANCE' ? parseFloat(costUsd) : null,
-      cost: purchaseType === 'ADVANCE' ? computedCost ?? 0 : parseFloat(cost) || 0,
-      salePrice: parseFloat(salePrice) || 0,
       notes,
+      items: items.map((it) => ({
+        id: it.id,
+        purchaseType: it.purchaseType,
+        productLink: it.purchaseType === 'ADVANCE' ? it.productLink : null,
+        costUsd: it.purchaseType === 'ADVANCE' ? parseFloat(it.costUsd) : null,
+        cost: it.purchaseType === 'ADVANCE' ? 0 : parseFloat(it.cost) || 0,
+        salePrice: parseFloat(it.salePrice) || 0,
+        notes: it.notes || null,
+      })),
     }
 
     if (newClientMode) {
@@ -145,7 +307,7 @@ export default function PedidoModal({
 
   return (
     <Modal title={pedido ? 'Editar pedido' : 'Nuevo pedido'} onClose={onClose}>
-      <form onSubmit={handleSubmit} className="space-y-3">
+      <form onSubmit={handleSubmit} className="space-y-4">
         {error && <p className="text-sm text-red-600">{error}</p>}
 
         {!pedido && (
@@ -214,106 +376,29 @@ export default function PedidoModal({
         </div>
 
         <div>
-          <label className="block text-sm mb-1">Tipo de compra</label>
-          <div className="flex gap-4 text-sm">
-            <label className="flex items-center gap-1">
-              <input
-                type="radio"
-                checked={purchaseType === 'ADVANCE'}
-                onChange={() => setPurchaseType('ADVANCE')}
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-sm font-medium">Productos</label>
+            <button type="button" onClick={addItem} className="text-xs text-brand-blue">
+              + Agregar producto
+            </button>
+          </div>
+          <div className="space-y-3">
+            {items.map((item, i) => (
+              <OrderItemFields
+                key={item.id ?? `new-${i}`}
+                item={item}
+                index={i}
+                rate={rate}
+                taxRate={selectedCycleTaxRate}
+                onChange={(patch) => updateItem(i, patch)}
+                onRemove={items.length > 1 ? () => removeItem(i) : undefined}
               />
-              Compra anticipada
-            </label>
-            <label className="flex items-center gap-1">
-              <input
-                type="radio"
-                checked={purchaseType === 'COURIER'}
-                onChange={() => setPurchaseType('COURIER')}
-              />
-              Courier (cliente ya compró)
-            </label>
+            ))}
           </div>
         </div>
 
-        {purchaseType === 'ADVANCE' ? (
-          <>
-            <div>
-              <label className="block text-sm mb-1">Link del producto</label>
-              <input
-                value={productLink ?? ''}
-                onChange={(e) => setProductLink(e.target.value)}
-                className="w-full px-3 py-2 border border-brand-gray rounded"
-              />
-            </div>
-            <div>
-              <label className="block text-sm mb-1">Costo (USD)</label>
-              <input
-                required
-                type="number"
-                step="0.01"
-                min="0"
-                value={costUsd}
-                onChange={(e) => setCostUsd(e.target.value)}
-                onBlur={(e) => formatOnBlur(e.target.value, setCostUsd)}
-                className="w-full px-3 py-2 border border-brand-gray rounded"
-              />
-              <p className="mt-1 text-xs text-brand-gray-dk">
-                {computedCost != null
-                  ? `≈ ${formatGTQ(computedCost)} al tipo de cambio actual`
-                  : rate == null
-                    ? 'Cargando tipo de cambio...'
-                    : ''}
-              </p>
-              {suggestedPrice != null && (
-                <p className="mt-1 text-xs text-brand-gray-dk">
-                  Precio sugerido: {formatGTQ(suggestedPrice)}{' '}
-                  <button
-                    type="button"
-                    onClick={() => setSalePrice(suggestedPrice.toFixed(2))}
-                    className="text-brand-blue underline"
-                  >
-                    usar
-                  </button>
-                </p>
-              )}
-            </div>
-          </>
-        ) : (
-          <div>
-            <label className="block text-sm mb-1">Costo (Q) — si Shopping Link cobra algo por traerlo</label>
-            <input
-              type="number"
-              step="0.01"
-              min="0"
-              value={cost}
-              onChange={(e) => setCost(e.target.value)}
-              onBlur={(e) => formatOnBlur(e.target.value, setCost)}
-              className="w-full px-3 py-2 border border-brand-gray rounded"
-            />
-          </div>
-        )}
-
         <div>
-          <label className="block text-sm mb-1">Precio de venta al cliente (Q)</label>
-          <input
-            required
-            type="number"
-            step="0.01"
-            min="0"
-            value={salePrice}
-            onChange={(e) => setSalePrice(e.target.value)}
-            onBlur={(e) => formatOnBlur(e.target.value, setSalePrice)}
-            className="w-full px-3 py-2 border border-brand-gray rounded"
-          />
-          {profit != null && (
-            <p className={`mt-1 text-xs ${profit >= 0 ? 'text-green-700' : 'text-red-600'}`}>
-              Ganancia: {formatGTQ(profit)}
-            </p>
-          )}
-        </div>
-
-        <div>
-          <label className="block text-sm mb-1">Notas</label>
+          <label className="block text-sm mb-1">Notas del pedido</label>
           <textarea
             value={notes ?? ''}
             onChange={(e) => setNotes(e.target.value)}

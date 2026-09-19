@@ -4,7 +4,7 @@ import PedidosTable from '@/components/pedidos/PedidosTable'
 export default async function PedidosPage() {
   const [pedidos, clientes, ciclos, openCycle] = await Promise.all([
     prisma.order.findMany({
-      include: { client: true, cycle: true },
+      include: { client: true, cycle: true, items: true },
       orderBy: { orderDate: 'desc' },
     }),
     prisma.client.findMany({
@@ -14,7 +14,7 @@ export default async function PedidosPage() {
     }),
     prisma.cycle.findMany({
       orderBy: { openDate: 'desc' },
-      select: { id: true, code: true, status: true },
+      select: { id: true, code: true, status: true, taxRate: true },
     }),
     prisma.cycle.findFirst({
       where: { status: 'OPEN' },
@@ -27,17 +27,21 @@ export default async function PedidosPage() {
   // number antes de bajarlo como prop.
   const plainPedidos = pedidos.map((p) => ({
     ...p,
-    costUsd: p.costUsd != null ? Number(p.costUsd) : null,
     exchangeRate: Number(p.exchangeRate),
-    cost: Number(p.cost),
-    salePrice: Number(p.salePrice),
+    items: p.items.map((i) => ({
+      ...i,
+      costUsd: i.costUsd != null ? Number(i.costUsd) : null,
+      cost: Number(i.cost),
+      salePrice: Number(i.salePrice),
+    })),
   }))
+  const plainCiclos = ciclos.map((c) => ({ ...c, taxRate: Number(c.taxRate) }))
 
   return (
     <PedidosTable
       pedidos={plainPedidos}
       clientes={clientes}
-      ciclos={ciclos}
+      ciclos={plainCiclos}
       defaultCycleId={openCycle?.id}
     />
   )

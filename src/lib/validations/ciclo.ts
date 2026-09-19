@@ -23,6 +23,7 @@ export const cicloSchema = z.object({
     .optional()
     .nullable()
     .transform((v) => (v ? v : null)),
+  taxRate: z.coerce.number().min(0).max(100).optional().default(7.5),
   notes: z.string().trim().optional().nullable(),
 })
 

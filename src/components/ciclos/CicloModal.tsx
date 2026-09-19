@@ -15,6 +15,7 @@ type Ciclo = {
   travelReturnDate: string | Date | null
   boxArrivalDate: string | Date | null
   usAddressId: string | null
+  taxRate: string | number
   notes: string | null
 }
 
@@ -42,6 +43,7 @@ export default function CicloModal({
   const [travelReturnDate, setTravelReturnDate] = useState(toDateInput(ciclo?.travelReturnDate))
   const [boxArrivalDate, setBoxArrivalDate] = useState(toDateInput(ciclo?.boxArrivalDate))
   const [usAddressId, setUsAddressId] = useState(ciclo?.usAddressId ?? '')
+  const [taxRate, setTaxRate] = useState(ciclo?.taxRate != null ? String(ciclo.taxRate) : '7.5')
   const [notes, setNotes] = useState(ciclo?.notes ?? '')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
@@ -60,6 +62,7 @@ export default function CicloModal({
       travelReturnDate: travelReturnDate || null,
       boxArrivalDate: boxArrivalDate || null,
       usAddressId: usAddressId || null,
+      taxRate: parseFloat(taxRate) || 0,
       notes,
     }
 
@@ -177,6 +180,23 @@ export default function CicloModal({
           <UsAddressSelect value={usAddressId} onChange={setUsAddressId} />
           <p className="mt-1 text-xs text-brand-gray-dk">
             Dónde se reciben los paquetes online/courier este ciclo.
+          </p>
+        </div>
+
+        <div>
+          <label className="block text-sm mb-1">Impuesto de compra (%)</label>
+          <input
+            required
+            type="number"
+            step="0.1"
+            min="0"
+            max="100"
+            value={taxRate}
+            onChange={(e) => setTaxRate(e.target.value)}
+            className="w-32 px-3 py-2 border border-brand-gray rounded"
+          />
+          <p className="mt-1 text-xs text-brand-gray-dk">
+            Varía según el estado de la dirección en USA de este ciclo. 7.5% de default.
           </p>
         </div>
 

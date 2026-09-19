@@ -17,6 +17,7 @@ type Ciclo = {
   boxArrivalDate: string | Date | null
   usAddressId: string | null
   usAddress: { name: string } | null
+  taxRate: string | number
   notes: string | null
 }
 
