@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { prisma } from '@/lib/prisma'
 
 export default async function Home() {
-  const [activeClients, openCycle, pendingOrders] = await Promise.all([
+  const [activeClients, openCycle, pendingOrders, pendingStorePurchases] = await Promise.all([
     prisma.client.count({ where: { active: true } }),
     prisma.cycle.findFirst({
       where: { status: 'OPEN' },
@@ -11,6 +11,7 @@ export default async function Home() {
     prisma.orderItem.count({
       where: { canceled: false, delivered: false, order: { cycle: { status: 'OPEN' } } },
     }),
+    prisma.storeOrder.count({ where: { purchased: false } }),
   ])
 
   return (
@@ -20,7 +21,7 @@ export default async function Home() {
         Resumen rápido de la operación.
       </p>
 
-      <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="mt-6 grid grid-cols-1 sm:grid-cols-4 gap-4">
         <Link
           href="/clientes"
           className="block bg-white border border-brand-gray rounded-lg p-5 hover:border-brand-blue"
@@ -50,6 +51,14 @@ export default async function Home() {
         >
           <p className="text-sm text-brand-gray-dk">Productos pendientes (ciclo abierto)</p>
           <p className="mt-1 text-3xl font-bold text-brand-black">{pendingOrders}</p>
+        </Link>
+
+        <Link
+          href="/tienda"
+          className="block bg-white border border-brand-gray rounded-lg p-5 hover:border-brand-blue"
+        >
+          <p className="text-sm text-brand-gray-dk">Compras en tienda pendientes</p>
+          <p className="mt-1 text-3xl font-bold text-brand-black">{pendingStorePurchases}</p>
         </Link>
       </div>
     </div>

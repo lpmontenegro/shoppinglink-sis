@@ -23,6 +23,15 @@ export default function Nav({ email }: { email?: string | null }) {
             <Link href="/pedidos" className="text-brand-gray-dk hover:text-brand-black">
               Pedidos
             </Link>
+            <Link href="/empaque" className="text-brand-gray-dk hover:text-brand-black">
+              Empaque
+            </Link>
+            <Link href="/distribucion" className="text-brand-gray-dk hover:text-brand-black">
+              Distribución
+            </Link>
+            <Link href="/tienda" className="text-brand-gray-dk hover:text-brand-black">
+              Tienda
+            </Link>
           </nav>
         </div>
         <div className="flex items-center gap-4">

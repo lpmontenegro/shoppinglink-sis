@@ -206,18 +206,20 @@ enum OrderSource {
 // ─── STORE PURCHASES (compras en tiendas durante el viaje) ───────────────────
 
 model StoreOrder {
-  id             String   @id @default(cuid())
-  cycleId        String
-  photoUrl       String?
-  productName    String
-  store          String
-  cost           Decimal  @db.Decimal(10, 2)
-  suggestedPrice Decimal  @db.Decimal(10, 2)
-  finalPrice     Decimal  @db.Decimal(10, 2)
+  id                String   @id @default(cuid())
+  cycleId           String
+  photoUrl          String?
+  productName       String
+  store             String
+  costUsd           Decimal? @db.Decimal(10, 2) // costo en USD tal como se paga en la tienda
+  exchangeRate      Decimal  @db.Decimal(10, 4) // tipo de cambio vigente al registrar la compra (snapshot histórico)
+  cost              Decimal  @db.Decimal(10, 2) // costo en quetzales: costUsd * exchangeRate
+  suggestedPrice    Decimal  @db.Decimal(10, 2) // precio sugerido en Q (costo + impuesto del ciclo + ganancia escalonada)
+  finalPrice        Decimal  @db.Decimal(10, 2) // precio final cobrado a los clientes que reclamaron, en Q
   storeLocationNote String?
-  purchased      Boolean  @default(false)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  purchased         Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   cycle  Cycle              @relation(fields: [cycleId], references: [id])
   claims StoreOrderClaim[]
