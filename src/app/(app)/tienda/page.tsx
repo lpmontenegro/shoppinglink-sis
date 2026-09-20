@@ -1,11 +1,16 @@
 import { prisma } from '@/lib/prisma'
-import StoreOrdersTable from '@/components/tienda/StoreOrdersTable'
+import TiendaView from '@/components/tienda/TiendaView'
 
 export default async function TiendaPage() {
-  const [storeOrders, clientes, ciclos, activeCycle] = await Promise.all([
-    prisma.storeOrder.findMany({
-      include: { claims: { include: { client: true } } },
-      orderBy: { createdAt: 'desc' },
+  const [visits, clientes, ciclos, activeCycle] = await Promise.all([
+    prisma.storeVisit.findMany({
+      include: {
+        offers: {
+          include: { selections: { include: { client: true } } },
+          orderBy: { createdAt: 'asc' },
+        },
+      },
+      orderBy: { visitDate: 'desc' },
     }),
     prisma.client.findMany({
       where: { active: true },
@@ -24,19 +29,22 @@ export default async function TiendaPage() {
 
   // Prisma's Decimal no se puede pasar tal cual de un Server Component a un
   // Client Component — se convierte a number antes de bajarlo como prop.
-  const plainStoreOrders = storeOrders.map((o) => ({
-    ...o,
-    costUsd: o.costUsd != null ? Number(o.costUsd) : null,
-    exchangeRate: Number(o.exchangeRate),
-    cost: Number(o.cost),
-    suggestedPrice: Number(o.suggestedPrice),
-    finalPrice: Number(o.finalPrice),
+  const plainVisits = visits.map((v) => ({
+    ...v,
+    offers: v.offers.map((o) => ({
+      ...o,
+      costUsd: Number(o.costUsd),
+      exchangeRate: Number(o.exchangeRate),
+      cost: Number(o.cost),
+      suggestedPrice: Number(o.suggestedPrice),
+      finalPrice: Number(o.finalPrice),
+    })),
   }))
   const plainCiclos = ciclos.map((c) => ({ ...c, taxRate: Number(c.taxRate) }))
 
   return (
-    <StoreOrdersTable
-      storeOrders={plainStoreOrders}
+    <TiendaView
+      visits={plainVisits}
       clientes={clientes}
       ciclos={plainCiclos}
       defaultCycleId={activeCycle?.id}

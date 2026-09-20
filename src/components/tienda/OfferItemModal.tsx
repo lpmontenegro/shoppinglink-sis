@@ -19,53 +19,42 @@ function extractErrorMessage(data: any, fallback: string): string {
   return fallback
 }
 
-type StoreOrder = {
+type OfferItem = {
   id: string
-  cycleId: string
   photoUrl: string | null
   productName: string
-  store: string
-  costUsd: number | null
+  costUsd: number
   exchangeRate: number
   finalPrice: number
-  storeLocationNote: string | null
-  purchased: boolean
+  notes: string | null
 }
 
-type CicloOption = { id: string; code: string; status: string; taxRate: number }
-
-export default function StoreOrderModal({
-  storeOrder,
-  ciclos,
-  defaultCycleId,
+export default function OfferItemModal({
+  visitId,
+  offer,
+  taxRate,
   onClose,
   onSaved,
 }: {
-  storeOrder?: StoreOrder | null
-  ciclos: CicloOption[]
-  defaultCycleId?: string
+  visitId: string
+  offer?: OfferItem | null
+  taxRate: number
   onClose: () => void
   onSaved: () => void
 }) {
-  const [cycleId, setCycleId] = useState(storeOrder?.cycleId ?? defaultCycleId ?? '')
-  const [productName, setProductName] = useState(storeOrder?.productName ?? '')
-  const [store, setStore] = useState(storeOrder?.store ?? '')
-  const [photoUrl, setPhotoUrl] = useState(storeOrder?.photoUrl ?? '')
-  const [costUsd, setCostUsd] = useState(storeOrder ? String(storeOrder.costUsd ?? '') : '')
-  const [finalPrice, setFinalPrice] = useState(storeOrder ? String(storeOrder.finalPrice) : '')
-  const [storeLocationNote, setStoreLocationNote] = useState(storeOrder?.storeLocationNote ?? '')
-  const [purchased, setPurchased] = useState(storeOrder?.purchased ?? false)
+  const [photoUrl, setPhotoUrl] = useState(offer?.photoUrl ?? '')
+  const [productName, setProductName] = useState(offer?.productName ?? '')
+  const [costUsd, setCostUsd] = useState(offer ? String(offer.costUsd) : '')
+  const [finalPrice, setFinalPrice] = useState(offer ? String(offer.finalPrice) : '')
+  const [finalPriceTouched, setFinalPriceTouched] = useState(!!offer)
+  const [notes, setNotes] = useState(offer?.notes ?? '')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
-  const taxRate = useMemo(() => {
-    return ciclos.find((c) => c.id === cycleId)?.taxRate ?? DEFAULT_TAX_RATE
-  }, [ciclos, cycleId])
-
-  // Sugerencia informativa en el navegador — el servidor recalcula igual al
-  // guardar, con el tipo de cambio real. Aquí solo usamos la tasa del pedido
-  // existente (o un estimado) para mostrar algo útil mientras se escribe.
-  const rateHint = storeOrder?.exchangeRate ?? null
+  // Al crear: la tasa aún no existe en el registro, así que usamos la del
+  // registro si se está editando, o simplemente mostramos la sugerencia sin
+  // convertir (el servidor recalcula con la tasa real al guardar).
+  const rateHint = offer?.exchangeRate ?? null
   const suggestedPrice = useMemo(() => {
     const usd = parseFloat(costUsd)
     if (!rateHint || !Number.isFinite(usd) || usd <= 0) return null
@@ -77,19 +66,20 @@ export default function StoreOrderModal({
     setError('')
     setSaving(true)
 
-    const payload = {
-      cycleId,
-      productName,
-      store,
+    const payload: Record<string, unknown> = {
       photoUrl: photoUrl || null,
+      productName,
       costUsd: parseFloat(costUsd) || 0,
-      finalPrice: parseFloat(finalPrice) || 0,
-      storeLocationNote: storeLocationNote || null,
-      purchased,
+      notes: notes || null,
+    }
+    if (finalPriceTouched && finalPrice !== '') {
+      payload.finalPrice = parseFloat(finalPrice) || 0
     }
 
-    const url = storeOrder ? `/api/store-orders/${storeOrder.id}` : '/api/store-orders'
-    const method = storeOrder ? 'PUT' : 'POST'
+    const url = offer
+      ? `/api/store-visits/${visitId}/offers/${offer.id}`
+      : `/api/store-visits/${visitId}/offers`
+    const method = offer ? 'PUT' : 'POST'
 
     try {
       const res = await fetch(url, {
@@ -99,7 +89,7 @@ export default function StoreOrderModal({
       })
       if (!res.ok) {
         const data = await res.json().catch(() => null)
-        setError(extractErrorMessage(data, 'No se pudo guardar la compra.'))
+        setError(extractErrorMessage(data, 'No se pudo guardar el producto.'))
         return
       }
       onSaved()
@@ -109,27 +99,9 @@ export default function StoreOrderModal({
   }
 
   return (
-    <Modal title={storeOrder ? 'Editar compra en tienda' : 'Nueva compra en tienda'} onClose={onClose}>
+    <Modal title={offer ? 'Editar producto ofrecido' : 'Nuevo producto ofrecido'} onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-3">
         {error && <p className="text-sm text-red-600">{error}</p>}
-
-        <div>
-          <label className="block text-sm mb-1">Ciclo</label>
-          <select
-            required
-            disabled={!!storeOrder}
-            value={cycleId}
-            onChange={(e) => setCycleId(e.target.value)}
-            className="w-full px-3 py-2 border border-brand-gray rounded disabled:bg-brand-gray-lt"
-          >
-            <option value="">Seleccionar ciclo...</option>
-            {ciclos.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.code}
-              </option>
-            ))}
-          </select>
-        </div>
 
         <div>
           <label className="block text-sm mb-1">Producto</label>
@@ -137,17 +109,6 @@ export default function StoreOrderModal({
             required
             value={productName}
             onChange={(e) => setProductName(e.target.value)}
-            className="w-full px-3 py-2 border border-brand-gray rounded"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm mb-1">Tienda</label>
-          <input
-            required
-            placeholder="ej. Target, Walmart, Amazon..."
-            value={store}
-            onChange={(e) => setStore(e.target.value)}
             className="w-full px-3 py-2 border border-brand-gray rounded"
           />
         </div>
@@ -169,36 +130,45 @@ export default function StoreOrderModal({
               Precio sugerido: {formatGTQ(suggestedPrice)}{' '}
               <button
                 type="button"
-                onClick={() => setFinalPrice(suggestedPrice.toFixed(2))}
+                onClick={() => {
+                  setFinalPrice(suggestedPrice.toFixed(2))
+                  setFinalPriceTouched(true)
+                }}
                 className="text-brand-blue underline"
               >
                 usar
               </button>
             </p>
           )}
+          {rateHint == null && (
+            <p className="mt-1 text-xs text-brand-gray-dk">
+              El precio sugerido y el costo en Q se calculan al guardar, con el tipo de cambio vigente.
+            </p>
+          )}
         </div>
 
         <div>
-          <label className="block text-xs text-brand-gray-dk mb-1">Precio final a cobrar (Q)</label>
-          <MoneyInput required prefix="Q" value={finalPrice} onChange={setFinalPrice} />
+          <label className="block text-xs text-brand-gray-dk mb-1">
+            Precio a ofrecer a clientes (Q) {!offer && '— si se deja vacío, se usa el sugerido'}
+          </label>
+          <MoneyInput
+            value={finalPrice}
+            onChange={(v) => {
+              setFinalPrice(v)
+              setFinalPriceTouched(true)
+            }}
+          />
         </div>
 
         <div>
-          <label className="block text-sm mb-1">Notas de ubicación en tienda (opcional)</label>
+          <label className="block text-sm mb-1">Notas (opcional)</label>
           <textarea
-            value={storeLocationNote ?? ''}
-            onChange={(e) => setStoreLocationNote(e.target.value)}
+            value={notes ?? ''}
+            onChange={(e) => setNotes(e.target.value)}
             rows={2}
             className="w-full px-3 py-2 border border-brand-gray rounded"
           />
         </div>
-
-        {storeOrder && (
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={purchased} onChange={(e) => setPurchased(e.target.checked)} />
-            Ya comprado
-          </label>
-        )}
 
         <div className="flex justify-end gap-2 pt-2">
           <button type="button" onClick={onClose} className="px-4 py-2 text-brand-gray-dk">

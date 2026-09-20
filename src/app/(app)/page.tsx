@@ -11,7 +11,9 @@ export default async function Home() {
     prisma.orderItem.count({
       where: { canceled: false, delivered: false, order: { cycle: { status: 'OPEN' } } },
     }),
-    prisma.storeOrder.count({ where: { purchased: false } }),
+    prisma.storeOfferItem.count({
+      where: { purchased: false, storeVisit: { status: { not: 'DONE' } } },
+    }),
   ])
 
   return (

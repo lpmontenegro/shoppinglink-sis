@@ -33,10 +33,10 @@ model Client {
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
 
-  pickupPlace      PickupPlace?      @relation(fields: [pickupPlaceId], references: [id])
-  orders           Order[]
-  statements       ClientStatement[]
-  storeOrderClaims StoreOrderClaim[]
+  pickupPlace          PickupPlace?           @relation(fields: [pickupPlaceId], references: [id])
+  orders               Order[]
+  statements           ClientStatement[]
+  storeOfferSelections StoreOfferSelection[]
 }
 
 enum FulfillmentMethod {
@@ -77,11 +77,11 @@ model Cycle {
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
 
-  usAddress  UsAddress?        @relation(fields: [usAddressId], references: [id])
-  orders     Order[]
-  expenses   CycleExpense[]
-  storeOrders StoreOrder[]
-  statements ClientStatement[]
+  usAddress   UsAddress?        @relation(fields: [usAddressId], references: [id])
+  orders      Order[]
+  expenses    CycleExpense[]
+  storeVisits StoreVisit[]
+  statements  ClientStatement[]
 }
 
 // Direcciones de recepción en USA, reutilizables entre ciclos (bodega propia,
@@ -170,8 +170,9 @@ model OrderItem {
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 
-  order   Order         @relation(fields: [orderId], references: [id])
-  product OrderProduct?
+  order                Order                 @relation(fields: [orderId], references: [id])
+  product              OrderProduct?
+  storeOfferSelection  StoreOfferSelection?
 }
 
 // Detalle físico de un producto de pedido: foto (para reconocimiento de
@@ -203,42 +204,77 @@ enum OrderSource {
   WHATSAPP
 }
 
-// ─── STORE PURCHASES (compras en tiendas durante el viaje) ───────────────────
+// ─── COMPRAS EN TIENDA (proceso de 2 pasos, durante el viaje) ────────────────
+//
+// Paso 1 — Oferta: en cada visita a una tienda (StoreVisit) se registran los
+// productos encontrados (StoreOfferItem) con foto y precio sugerido; al
+// "publicar" la visita, esa lista se comparte manualmente por WhatsApp.
+// Paso 2 — Selección/compra: los clientes piden cuáles quieren
+// (StoreOfferSelection); cada selección genera al instante un OrderItem real
+// dentro del pedido de ese cliente en el ciclo (aparece en Pedidos/Empaque/
+// Distribución igual que cualquier otro producto), y a la vez cuenta como
+// "carrito" de lo que hay que comprar en esa tienda (suma de selections por
+// StoreOfferItem). Al comprar de verdad, se marca el StoreOfferItem como
+// purchased, lo que confirma automáticamente los OrderItem relacionados.
 
-model StoreOrder {
-  id                String   @id @default(cuid())
-  cycleId           String
-  photoUrl          String?
-  productName       String
-  store             String
-  costUsd           Decimal? @db.Decimal(10, 2) // costo en USD tal como se paga en la tienda
-  exchangeRate      Decimal  @db.Decimal(10, 4) // tipo de cambio vigente al registrar la compra (snapshot histórico)
-  cost              Decimal  @db.Decimal(10, 2) // costo en quetzales: costUsd * exchangeRate
-  suggestedPrice    Decimal  @db.Decimal(10, 2) // precio sugerido en Q (costo + impuesto del ciclo + ganancia escalonada)
-  finalPrice        Decimal  @db.Decimal(10, 2) // precio final cobrado a los clientes que reclamaron, en Q
-  storeLocationNote String?
-  purchased         Boolean  @default(false)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+model StoreVisit {
+  id        String           @id @default(cuid())
+  cycleId   String
+  store     String
+  visitDate DateTime         @default(now())
+  status    StoreVisitStatus @default(DRAFT)
+  notes     String?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
 
-  cycle  Cycle              @relation(fields: [cycleId], references: [id])
-  claims StoreOrderClaim[]
+  cycle  Cycle            @relation(fields: [cycleId], references: [id])
+  offers StoreOfferItem[]
 }
 
-// Un cliente reclamando unidades de un StoreOrder publicado en el grupo.
-model StoreOrderClaim {
-  id           String   @id @default(cuid())
-  storeOrderId String
-  clientId     String
-  quantity     Int      @default(1)
-  confirmed    Boolean  @default(false)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+enum StoreVisitStatus {
+  DRAFT     // armando la oferta, todavía no se comparte con clientes
+  PUBLISHED // publicada (se comparte por WhatsApp), tomando selecciones de clientes
+  DONE      // compra en tienda terminada, visita cerrada
+}
 
-  storeOrder StoreOrder @relation(fields: [storeOrderId], references: [id])
-  client     Client     @relation(fields: [clientId], references: [id])
+// Un producto encontrado en la tienda durante la visita, con su precio
+// sugerido calculado igual que en Pedidos (costo + impuesto del ciclo +
+// ganancia escalonada).
+model StoreOfferItem {
+  id             String   @id @default(cuid())
+  storeVisitId   String
+  photoUrl       String?
+  productName    String
+  costUsd        Decimal  @db.Decimal(10, 2)
+  exchangeRate   Decimal  @db.Decimal(10, 4) // tipo de cambio vigente al registrar el producto (snapshot histórico)
+  cost           Decimal  @db.Decimal(10, 2) // costo en quetzales: costUsd * exchangeRate
+  suggestedPrice Decimal  @db.Decimal(10, 2) // precio sugerido en Q
+  finalPrice     Decimal  @db.Decimal(10, 2) // precio ofrecido/cobrado a los clientes, en Q (editable, default = sugerido)
+  purchased      Boolean  @default(false) // ya se compró en tienda la cantidad total pedida
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  @@unique([storeOrderId, clientId])
+  storeVisit StoreVisit             @relation(fields: [storeVisitId], references: [id])
+  selections StoreOfferSelection[]
+}
+
+// Un cliente pidiendo cantidad de un producto ofrecido. Al crearse genera un
+// OrderItem real (orderItemId) en el pedido de ese cliente para ese ciclo.
+model StoreOfferSelection {
+  id          String   @id @default(cuid())
+  offerItemId String
+  clientId    String
+  quantity    Int      @default(1)
+  orderItemId String?  @unique
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  offerItem StoreOfferItem @relation(fields: [offerItemId], references: [id])
+  client    Client         @relation(fields: [clientId], references: [id])
+  orderItem OrderItem?     @relation(fields: [orderItemId], references: [id])
+
+  @@unique([offerItemId, clientId])
 }
 
 // ─── FINANCIALS ──────────────────────────────────────────────────────────────
