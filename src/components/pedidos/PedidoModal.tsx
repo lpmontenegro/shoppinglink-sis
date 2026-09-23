@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import Modal from '@/components/Modal'
 import MoneyInput from '@/components/MoneyInput'
+import PhotoInput from '@/components/PhotoInput'
 import { formatGTQ, usdToGtq } from '@/lib/currency'
 import { costWithTax, DEFAULT_TAX_RATE, suggestedSalePriceUsd } from '@/lib/pricing'
 
@@ -143,18 +144,17 @@ function OrderItemFields({
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-2 mb-2">
+      <div className="mb-2">
         <input
           placeholder="Nombre corto del producto (ej. Zapatos Nike 8.5)"
           value={item.productName}
           onChange={(e) => onChange({ productName: e.target.value })}
-          className="w-full px-3 py-2 border border-brand-gray rounded text-sm"
+          className="w-full px-3 py-2 border border-brand-gray rounded text-sm mb-2"
         />
-        <input
-          placeholder="Foto (link, opcional)"
-          value={item.photoUrl}
-          onChange={(e) => onChange({ photoUrl: e.target.value })}
-          className="w-full px-3 py-2 border border-brand-gray rounded text-sm"
+        <PhotoInput
+          value={item.photoUrl || null}
+          onChange={(url) => onChange({ photoUrl: url ?? '' })}
+          label="Foto del producto"
         />
       </div>
 

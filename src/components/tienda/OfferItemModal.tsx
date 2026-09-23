@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 import Modal from '@/components/Modal'
 import MoneyInput from '@/components/MoneyInput'
+import PhotoInput from '@/components/PhotoInput'
 import { formatGTQ, usdToGtq } from '@/lib/currency'
 import { suggestedSalePriceUsd, DEFAULT_TAX_RATE } from '@/lib/pricing'
 
@@ -42,7 +43,7 @@ export default function OfferItemModal({
   onClose: () => void
   onSaved: () => void
 }) {
-  const [photoUrl, setPhotoUrl] = useState(offer?.photoUrl ?? '')
+  const [photoUrl, setPhotoUrl] = useState<string | null>(offer?.photoUrl ?? null)
   const [productName, setProductName] = useState(offer?.productName ?? '')
   const [costUsd, setCostUsd] = useState(offer ? String(offer.costUsd) : '')
   const [finalPrice, setFinalPrice] = useState(offer ? String(offer.finalPrice) : '')
@@ -113,14 +114,7 @@ export default function OfferItemModal({
           />
         </div>
 
-        <div>
-          <label className="block text-sm mb-1">Foto (link, opcional)</label>
-          <input
-            value={photoUrl}
-            onChange={(e) => setPhotoUrl(e.target.value)}
-            className="w-full px-3 py-2 border border-brand-gray rounded"
-          />
-        </div>
+        <PhotoInput value={photoUrl} onChange={setPhotoUrl} label="Foto del producto" />
 
         <div>
           <label className="block text-xs text-brand-gray-dk mb-1">Costo (USD)</label>
