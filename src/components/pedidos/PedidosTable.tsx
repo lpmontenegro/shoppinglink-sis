@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import PedidoModal from './PedidoModal'
 import StatusBadge from '@/components/StatusBadge'
+import PhotoThumb from '@/components/PhotoThumb'
 import { formatGTQ, formatUSD } from '@/lib/currency'
 
 type OrderItem = {
@@ -185,13 +186,7 @@ export default function PedidosTable({
                       <tr key={item.id} className="border-t border-brand-gray align-top">
                         <td className="px-4 py-2 max-w-[220px]">
                           <div className="flex items-center gap-2">
-                            {item.photoUrl && (
-                              <img
-                                src={item.photoUrl}
-                                alt=""
-                                className="w-8 h-8 rounded object-cover border border-brand-gray shrink-0"
-                              />
-                            )}
+                            {item.photoUrl && <PhotoThumb src={item.photoUrl} size="w-8 h-8" />}
                             <div className="truncate">
                               <div className="truncate font-medium text-brand-black">
                                 {item.productName || item.productLink || item.notes || '—'}

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import PhotoThumb from '@/components/PhotoThumb'
 
 type Item = {
   id: string
@@ -21,15 +22,7 @@ type Item = {
 function ProductCell({ item }: { item: Item }) {
   return (
     <div className="flex items-center gap-2">
-      {item.photoUrl && (
-        <a href={item.photoUrl} target="_blank" rel="noreferrer" title="Ver foto en tamaño grande">
-          <img
-            src={item.photoUrl}
-            alt=""
-            className="w-8 h-8 rounded object-cover border border-brand-gray shrink-0 hover:opacity-80"
-          />
-        </a>
-      )}
+      {item.photoUrl && <PhotoThumb src={item.photoUrl} size="w-8 h-8" />}
       <span className="truncate">
         {item.productName || item.productLink || item.notes || '—'}
         {item.quantity > 1 && <span className="ml-1 text-xs font-medium text-brand-blue">×{item.quantity}</span>}

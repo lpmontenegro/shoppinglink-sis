@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { formatGTQ } from '@/lib/currency'
+import PhotoThumb from '@/components/PhotoThumb'
 
 type Item = {
   id: string
@@ -176,21 +177,7 @@ export default function DistribucionView({
           item.delivered ? 'opacity-50' : ''
         }`}
       >
-        {item.photoUrl && (
-          <a
-            href={item.photoUrl}
-            target="_blank"
-            rel="noreferrer"
-            title="Ver foto en tamaño grande"
-            className="shrink-0"
-          >
-            <img
-              src={item.photoUrl}
-              alt=""
-              className="w-9 h-9 rounded object-cover border border-brand-gray hover:opacity-80"
-            />
-          </a>
-        )}
+        {item.photoUrl && <PhotoThumb src={item.photoUrl} size="w-9 h-9" />}
         <label className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer">
           <input
             type="checkbox"
