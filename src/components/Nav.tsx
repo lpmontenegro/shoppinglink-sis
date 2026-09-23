@@ -32,6 +32,9 @@ export default function Nav({ email }: { email?: string | null }) {
             <Link href="/tienda" className="text-brand-gray-dk hover:text-brand-black">
               Tienda
             </Link>
+            <Link href="/finanzas" className="text-brand-gray-dk hover:text-brand-black">
+              Finanzas
+            </Link>
           </nav>
         </div>
         <div className="flex items-center gap-4">

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getBalancesForClients } from '@/lib/finanzas'
 
 // Solo productos ya empacados (maleta o caja) entran a distribución — el
 // paso de empaque va antes. Se separa por packedIn porque la maleta llega
@@ -22,6 +23,11 @@ export async function GET(req: NextRequest) {
     orderBy: { createdAt: 'asc' },
   })
 
+  const balances = await getBalancesForClients(
+    items.map((i) => i.order.client.id),
+    cycleId
+  )
+
   const plainItems = items.map((i) => ({
     id: i.id,
     orderId: i.orderId,
@@ -40,6 +46,7 @@ export async function GET(req: NextRequest) {
       zone: i.order.client.zone,
       deliveryAddress: i.order.client.deliveryAddress,
       pickupPlace: i.order.client.pickupPlace ? { name: i.order.client.pickupPlace.name } : null,
+      balance: balances[i.order.client.id] ?? 0,
     },
   }))
 

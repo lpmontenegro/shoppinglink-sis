@@ -22,6 +22,7 @@ type Item = {
     zone: string
     deliveryAddress: string
     pickupPlace: { name: string } | null
+    balance: number
   }
 }
 
@@ -217,6 +218,11 @@ export default function DistribucionView({
                 : 'N/A'}
             </p>
             {group.client.phones[0] && <p className="text-xs text-brand-gray-dk">{group.client.phones[0]}</p>}
+            {group.client.balance > 0 && (
+              <p className="mt-1 inline-block text-xs font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded">
+                Saldo pendiente (ciclo): {formatGTQ(group.client.balance)}
+              </p>
+            )}
           </div>
           <div className="text-right shrink-0">
             <p className="font-medium text-brand-black">{formatGTQ(total)}</p>

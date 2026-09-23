@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { getBalancesForClients } from '@/lib/finanzas'
 import DistribucionView from '@/components/distribucion/DistribucionView'
 
 export default async function DistribucionPage() {
@@ -29,6 +30,13 @@ export default async function DistribucionPage() {
       })
     : []
 
+  const balances = defaultCycleId
+    ? await getBalancesForClients(
+        items.map((i) => i.order.client.id),
+        defaultCycleId
+      )
+    : {}
+
   const plainItems = items.map((i) => ({
     id: i.id,
     orderId: i.orderId,
@@ -47,6 +55,7 @@ export default async function DistribucionPage() {
       zone: i.order.client.zone,
       deliveryAddress: i.order.client.deliveryAddress,
       pickupPlace: i.order.client.pickupPlace ? { name: i.order.client.pickupPlace.name } : null,
+      balance: balances[i.order.client.id] ?? 0,
     },
   }))
 
