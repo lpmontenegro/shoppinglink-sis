@@ -52,16 +52,18 @@ export async function POST(
         })
       }
 
-      const label = `Tienda (${offer.storeVisit.store}): ${offer.productName}${quantity > 1 ? ` x${quantity}` : ''}`
+      const note = `Tienda: ${offer.storeVisit.store}${quantity > 1 ? ` · x${quantity}` : ''}`
 
       const orderItem = await tx.orderItem.create({
         data: {
           orderId: order.id,
           purchaseType: 'ADVANCE',
+          productName: offer.productName,
+          photoUrl: offer.photoUrl,
           costUsd: offer.costUsd,
           cost: offer.cost,
           salePrice: Number(offer.finalPrice) * quantity,
-          notes: label,
+          notes: note,
         },
       })
 

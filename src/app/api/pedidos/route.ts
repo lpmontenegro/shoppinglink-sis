@@ -68,6 +68,8 @@ export async function POST(req: NextRequest) {
       source: 'MANUAL',
       items: {
         create: data.items.map((item) => ({
+          productName: item.productName || null,
+          photoUrl: item.photoUrl || null,
           productLink: item.purchaseType === 'ADVANCE' ? item.productLink || null : null,
           purchaseType: item.purchaseType,
           costUsd: item.purchaseType === 'ADVANCE' ? item.costUsd : null,

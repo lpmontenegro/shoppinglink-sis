@@ -10,6 +10,8 @@ export const PACKING_METHODS = ['SUITCASE', 'BOX'] as const
 export const orderItemSchema = z
   .object({
     id: z.string().trim().optional(),
+    productName: z.string().trim().optional().nullable(),
+    photoUrl: z.string().trim().optional().nullable(),
     productLink: z.string().trim().optional().nullable(),
     purchaseType: z.enum(PURCHASE_TYPES),
     costUsd: z.coerce.number().nonnegative().optional().nullable(),

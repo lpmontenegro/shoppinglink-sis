@@ -8,6 +8,8 @@ import { formatGTQ, formatUSD } from '@/lib/currency'
 
 type OrderItem = {
   id: string
+  productName: string | null
+  photoUrl: string | null
   productLink: string | null
   purchaseType: 'ADVANCE' | 'COURIER'
   costUsd: string | number | null
@@ -180,8 +182,26 @@ export default function PedidosTable({
                     const status = itemStatus(item)
                     return (
                       <tr key={item.id} className="border-t border-brand-gray align-top">
-                        <td className="px-4 py-2 max-w-[220px] truncate whitespace-nowrap">
-                          {item.productLink || item.notes || '—'}
+                        <td className="px-4 py-2 max-w-[220px]">
+                          <div className="flex items-center gap-2">
+                            {item.photoUrl && (
+                              <img
+                                src={item.photoUrl}
+                                alt=""
+                                className="w-8 h-8 rounded object-cover border border-brand-gray shrink-0"
+                              />
+                            )}
+                            <div className="truncate">
+                              <div className="truncate font-medium text-brand-black">
+                                {item.productName || item.productLink || item.notes || '—'}
+                              </div>
+                              {item.productName && (item.productLink || item.notes) && (
+                                <div className="truncate text-xs text-brand-gray-dk">
+                                  {item.productLink || item.notes}
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         </td>
                         <td className="px-4 py-2 whitespace-nowrap">
                           {item.purchaseType === 'ADVANCE' ? 'Anticipada' : 'Courier'}
@@ -199,9 +219,16 @@ export default function PedidosTable({
                           <StatusBadge label={status.label} colorClass={status.color} />
                         </td>
                         <td className="px-4 py-2 text-right whitespace-nowrap space-x-2">
-                          {!item.canceled && !item.delivered && (
+                          {item.canceled ? (
+                            <button
+                              onClick={() => patchItemStatus(p.id, item.id, { canceled: false })}
+                              className="text-brand-gray-dk"
+                            >
+                              Reactivar
+                            </button>
+                          ) : (
                             <>
-                              {!item.confirmed && (
+                              {!item.confirmed && !item.packed && (
                                 <button
                                   onClick={() => patchItemStatus(p.id, item.id, { confirmed: true })}
                                   className="text-brand-gray-dk"
@@ -209,38 +236,27 @@ export default function PedidosTable({
                                   Confirmar
                                 </button>
                               )}
-                              {!item.packed && (
-                                <>
-                                  <button
-                                    onClick={() =>
-                                      patchItemStatus(p.id, item.id, { packed: true, packedIn: 'SUITCASE' })
-                                    }
-                                    className="text-brand-gray-dk"
-                                  >
-                                    Maleta
-                                  </button>
-                                  <button
-                                    onClick={() =>
-                                      patchItemStatus(p.id, item.id, { packed: true, packedIn: 'BOX' })
-                                    }
-                                    className="text-brand-gray-dk"
-                                  >
-                                    Caja
-                                  </button>
-                                </>
+                              {item.confirmed && !item.packed && !item.delivered && (
+                                <button
+                                  onClick={() => patchItemStatus(p.id, item.id, { confirmed: false })}
+                                  className="text-brand-gray-dk"
+                                >
+                                  Deshacer confirmación
+                                </button>
                               )}
-                              <button
-                                onClick={() => patchItemStatus(p.id, item.id, { delivered: true })}
-                                className="text-green-700"
-                              >
-                                Entregar
-                              </button>
-                              <button
-                                onClick={() => cancelarItem(p.id, item.id)}
-                                className="text-red-600"
-                              >
-                                Cancelar
-                              </button>
+                              {!item.packed && !item.delivered && (
+                                <button
+                                  onClick={() => cancelarItem(p.id, item.id)}
+                                  className="text-red-600"
+                                >
+                                  Cancelar
+                                </button>
+                              )}
+                              {(item.packed || item.delivered) && (
+                                <span className="text-xs text-brand-gray-dk">
+                                  Gestionar en {item.delivered ? 'Distribución' : 'Empaque'}
+                                </span>
+                              )}
                             </>
                           )}
                         </td>

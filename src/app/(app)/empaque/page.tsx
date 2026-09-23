@@ -17,7 +17,11 @@ export default async function EmpaquePage() {
 
   const items = defaultCycleId
     ? await prisma.orderItem.findMany({
-        where: { canceled: false, confirmed: true, order: { cycleId: defaultCycleId } },
+        where: {
+          canceled: false,
+          OR: [{ confirmed: true }, { packed: true }],
+          order: { cycleId: defaultCycleId },
+        },
         include: { order: { include: { client: { select: { fullName: true } } } } },
         orderBy: { createdAt: 'asc' },
       })
@@ -26,9 +30,12 @@ export default async function EmpaquePage() {
   const plainItems = items.map((i) => ({
     id: i.id,
     orderId: i.orderId,
+    productName: i.productName,
+    photoUrl: i.photoUrl,
     productLink: i.productLink,
     notes: i.notes,
     purchaseType: i.purchaseType,
+    confirmed: i.confirmed,
     packed: i.packed,
     packedIn: i.packedIn,
     delivered: i.delivered,

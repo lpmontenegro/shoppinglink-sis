@@ -20,8 +20,18 @@ export async function PATCH(
 
   const data = parsed.data
   const updateData: Record<string, unknown> = { ...data }
-  if (data.delivered) {
+  // Permite deshacer cualquier paso: si se desempaca se limpia el método, y
+  // si se desmarca como entregado se limpia la fecha de entrega.
+  if (data.delivered === true) {
     updateData.deliveryDate = new Date()
+  } else if (data.delivered === false) {
+    updateData.deliveryDate = null
+  }
+  if (data.packed === false) {
+    updateData.packedIn = null
+  }
+  if (data.canceled === false) {
+    updateData.canceledReason = null
   }
 
   const item = await prisma.orderItem.update({

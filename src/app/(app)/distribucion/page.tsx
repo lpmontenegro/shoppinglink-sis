@@ -17,7 +17,7 @@ export default async function DistribucionPage() {
 
   const items = defaultCycleId
     ? await prisma.orderItem.findMany({
-        where: { canceled: false, order: { cycleId: defaultCycleId } },
+        where: { canceled: false, packed: true, packedIn: 'SUITCASE', order: { cycleId: defaultCycleId } },
         include: {
           order: {
             include: {
@@ -29,17 +29,14 @@ export default async function DistribucionPage() {
       })
     : []
 
-  // Aplanamos a un shape simple: un item con los datos del cliente y del
-  // pedido ya incluidos, listo para agrupar y renderizar en el cliente.
   const plainItems = items.map((i) => ({
     id: i.id,
     orderId: i.orderId,
+    productName: i.productName,
+    photoUrl: i.photoUrl,
     productLink: i.productLink,
     notes: i.notes,
     salePrice: Number(i.salePrice),
-    confirmed: i.confirmed,
-    packed: i.packed,
-    packedIn: i.packedIn,
     delivered: i.delivered,
     client: {
       id: i.order.client.id,
@@ -54,7 +51,8 @@ export default async function DistribucionPage() {
 
   return (
     <DistribucionView
-      items={plainItems}
+      initialItems={plainItems}
+      initialPackedIn="SUITCASE"
       ciclos={ciclos}
       selectedCycleId={defaultCycleId}
     />

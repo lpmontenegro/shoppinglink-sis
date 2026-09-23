@@ -154,6 +154,8 @@ model Order {
 model OrderItem {
   id             String         @id @default(cuid())
   orderId        String
+  productName    String? // nombre corto para mostrar en listas (empaque/distribución); a futuro se puede autocompletar desde Amazon/tienda
+  photoUrl       String? // link a foto del producto, para identificarlo fácil al empacar/organizar
   productLink    String?
   purchaseType   PurchaseType
   costUsd        Decimal?       @db.Decimal(10, 2) // costo en USD tal como se compra (solo aplica a ADVANCE; tiendas/online cobran en $)

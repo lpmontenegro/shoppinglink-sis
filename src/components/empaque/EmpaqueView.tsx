@@ -5,13 +5,31 @@ import { useEffect, useMemo, useState } from 'react'
 type Item = {
   id: string
   orderId: string
+  productName: string | null
+  photoUrl: string | null
   productLink: string | null
   notes: string | null
   purchaseType: string
+  confirmed: boolean
   packed: boolean
   packedIn: string | null
   delivered: boolean
   clientName: string
+}
+
+function ProductCell({ item }: { item: Item }) {
+  return (
+    <div className="flex items-center gap-2">
+      {item.photoUrl && (
+        <img
+          src={item.photoUrl}
+          alt=""
+          className="w-8 h-8 rounded object-cover border border-brand-gray shrink-0"
+        />
+      )}
+      <span className="truncate">{item.productName || item.productLink || item.notes || '—'}</span>
+    </div>
+  )
 }
 
 type CicloOption = { id: string; code: string; status: string }
@@ -120,7 +138,9 @@ export default function EmpaqueView({
               <tbody>
                 {pending.map((item) => (
                   <tr key={item.id} className="border-t border-brand-gray">
-                    <td className="px-4 py-2 max-w-[220px] truncate">{item.productLink || item.notes || '—'}</td>
+                    <td className="px-4 py-2 max-w-[220px]">
+                      <ProductCell item={item} />
+                    </td>
                     <td className="px-4 py-2">{item.clientName}</td>
                     <td className="px-4 py-2">{item.purchaseType === 'ADVANCE' ? 'Anticipada' : 'Courier'}</td>
                     <td className="px-4 py-2 text-right whitespace-nowrap space-x-2">
@@ -161,7 +181,9 @@ export default function EmpaqueView({
               <tbody>
                 {packed.map((item) => (
                   <tr key={item.id} className="border-t border-brand-gray">
-                    <td className="px-4 py-2 max-w-[220px] truncate">{item.productLink || item.notes || '—'}</td>
+                    <td className="px-4 py-2 max-w-[220px]">
+                      <ProductCell item={item} />
+                    </td>
                     <td className="px-4 py-2">{item.clientName}</td>
                     <td className="px-4 py-2">{item.packedIn === 'SUITCASE' ? 'Maleta' : 'Caja'}</td>
                     <td className="px-4 py-2 text-right">

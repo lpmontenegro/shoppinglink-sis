@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
+// Solo productos ya empacados (maleta o caja) entran a distribución — el
+// paso de empaque va antes. Se separa por packedIn porque la maleta llega
+// con las administradoras al regresar del viaje y la caja llega después por
+// courier, así que son dos momentos/listas de entrega distintos.
 export async function GET(req: NextRequest) {
   const cycleId = req.nextUrl.searchParams.get('cycleId')
-  if (!cycleId) return NextResponse.json([])
+  const packedIn = req.nextUrl.searchParams.get('packedIn')
+  if (!cycleId || (packedIn !== 'SUITCASE' && packedIn !== 'BOX')) return NextResponse.json([])
 
   const items = await prisma.orderItem.findMany({
-    where: { canceled: false, order: { cycleId } },
+    where: { canceled: false, packed: true, packedIn, order: { cycleId } },
     include: {
       order: {
         include: {
@@ -20,12 +25,11 @@ export async function GET(req: NextRequest) {
   const plainItems = items.map((i) => ({
     id: i.id,
     orderId: i.orderId,
+    productName: i.productName,
+    photoUrl: i.photoUrl,
     productLink: i.productLink,
     notes: i.notes,
     salePrice: Number(i.salePrice),
-    confirmed: i.confirmed,
-    packed: i.packed,
-    packedIn: i.packedIn,
     delivered: i.delivered,
     client: {
       id: i.order.client.id,

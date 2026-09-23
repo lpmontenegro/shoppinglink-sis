@@ -24,6 +24,8 @@ function extractErrorMessage(data: any, fallback: string): string {
 
 type PedidoItem = {
   id: string
+  productName: string | null
+  photoUrl: string | null
   productLink: string | null
   purchaseType: 'ADVANCE' | 'COURIER'
   costUsd: string | number | null
@@ -43,6 +45,8 @@ type Pedido = {
 type ItemState = {
   id?: string
   purchaseType: 'ADVANCE' | 'COURIER'
+  productName: string
+  photoUrl: string
   productLink: string
   costUsd: string
   cost: string
@@ -51,7 +55,16 @@ type ItemState = {
 }
 
 function emptyItem(): ItemState {
-  return { purchaseType: 'ADVANCE', productLink: '', costUsd: '', cost: '', salePrice: '', notes: '' }
+  return {
+    purchaseType: 'ADVANCE',
+    productName: '',
+    photoUrl: '',
+    productLink: '',
+    costUsd: '',
+    cost: '',
+    salePrice: '',
+    notes: '',
+  }
 }
 
 function itemsFromPedido(pedido?: Pedido | null): ItemState[] {
@@ -59,6 +72,8 @@ function itemsFromPedido(pedido?: Pedido | null): ItemState[] {
   return pedido.items.map((i) => ({
     id: i.id,
     purchaseType: i.purchaseType,
+    productName: i.productName ?? '',
+    photoUrl: i.photoUrl ?? '',
     productLink: i.productLink ?? '',
     costUsd: i.costUsd != null ? String(i.costUsd) : '',
     cost: String(i.cost),
@@ -126,6 +141,21 @@ function OrderItemFields({
             &times;
           </button>
         )}
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 mb-2">
+        <input
+          placeholder="Nombre corto del producto (ej. Zapatos Nike 8.5)"
+          value={item.productName}
+          onChange={(e) => onChange({ productName: e.target.value })}
+          className="w-full px-3 py-2 border border-brand-gray rounded text-sm"
+        />
+        <input
+          placeholder="Foto (link, opcional)"
+          value={item.photoUrl}
+          onChange={(e) => onChange({ photoUrl: e.target.value })}
+          className="w-full px-3 py-2 border border-brand-gray rounded text-sm"
+        />
       </div>
 
       <div className="flex gap-4 text-sm mb-2">
@@ -271,6 +301,8 @@ export default function PedidoModal({
       items: items.map((it) => ({
         id: it.id,
         purchaseType: it.purchaseType,
+        productName: it.productName || null,
+        photoUrl: it.photoUrl || null,
         productLink: it.purchaseType === 'ADVANCE' ? it.productLink : null,
         costUsd: it.purchaseType === 'ADVANCE' ? parseFloat(it.costUsd) : null,
         cost: it.purchaseType === 'ADVANCE' ? 0 : parseFloat(it.cost) || 0,
