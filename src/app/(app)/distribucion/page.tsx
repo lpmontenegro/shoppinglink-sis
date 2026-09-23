@@ -36,6 +36,7 @@ export default async function DistribucionPage() {
     photoUrl: i.photoUrl,
     productLink: i.productLink,
     notes: i.notes,
+    quantity: i.quantity,
     salePrice: Number(i.salePrice),
     delivered: i.delivered,
     client: {

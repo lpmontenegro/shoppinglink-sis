@@ -10,6 +10,7 @@ type Item = {
   photoUrl: string | null
   productLink: string | null
   notes: string | null
+  quantity: number
   salePrice: number
   delivered: boolean
   client: {
@@ -165,43 +166,59 @@ export default function DistribucionView({
   const overall = stats(items)
 
   function renderItemRow(item: Item) {
+    // La foto va fuera del <label> (aunque esté dentro visualmente) para que
+    // tocarla abra la imagen en una pestaña nueva en vez de marcar/desmarcar
+    // el checkbox — solo el checkbox y el texto activan el toggle.
     return (
-      <label
+      <div
         key={item.id}
-        className={`flex items-center gap-3 px-4 py-2 border-t border-brand-gray-lt cursor-pointer ${
+        className={`flex items-center gap-3 px-4 py-2 border-t border-brand-gray-lt ${
           item.delivered ? 'opacity-50' : ''
         }`}
       >
-        <input
-          type="checkbox"
-          checked={item.delivered}
-          disabled={busy[item.id]}
-          onChange={() => toggleDelivered(item)}
-          className="w-4 h-4 shrink-0"
-        />
         {item.photoUrl && (
-          <img
-            src={item.photoUrl}
-            alt=""
-            className="w-9 h-9 rounded object-cover border border-brand-gray shrink-0"
-          />
+          <a
+            href={item.photoUrl}
+            target="_blank"
+            rel="noreferrer"
+            title="Ver foto en tamaño grande"
+            className="shrink-0"
+          >
+            <img
+              src={item.photoUrl}
+              alt=""
+              className="w-9 h-9 rounded object-cover border border-brand-gray hover:opacity-80"
+            />
+          </a>
         )}
-        <span className="flex-1 min-w-0">
-          <span className={`block text-sm font-medium text-brand-black truncate ${item.delivered ? 'line-through' : ''}`}>
-            {item.productName || item.productLink || item.notes || 'Producto'}
+        <label className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={item.delivered}
+            disabled={busy[item.id]}
+            onChange={() => toggleDelivered(item)}
+            className="w-4 h-4 shrink-0"
+          />
+          <span className="flex-1 min-w-0">
+            <span className={`block text-sm font-medium text-brand-black truncate ${item.delivered ? 'line-through' : ''}`}>
+              {item.productName || item.productLink || item.notes || 'Producto'}
+              {item.quantity > 1 && <span className="ml-1 text-xs font-medium text-brand-blue">×{item.quantity}</span>}
+            </span>
+            {item.productName && item.notes && (
+              <span className="block text-xs text-brand-gray-dk italic truncate">Nota: {item.notes}</span>
+            )}
           </span>
-          {item.productName && item.notes && (
-            <span className="block text-xs text-brand-gray-dk italic truncate">Nota: {item.notes}</span>
-          )}
-        </span>
-        <span className="text-sm font-medium text-brand-black shrink-0">{formatGTQ(item.salePrice)}</span>
-      </label>
+          <span className="text-sm font-medium text-brand-black shrink-0">
+            {formatGTQ(item.salePrice * item.quantity)}
+          </span>
+        </label>
+      </div>
     )
   }
 
   function renderClientCard(group: ClientGroup) {
     const s = stats(group.items)
-    const total = group.items.reduce((sum, i) => sum + i.salePrice, 0)
+    const total = group.items.reduce((sum, i) => sum + i.salePrice * i.quantity, 0)
     return (
       <div key={group.client.id} className="border-t border-brand-gray">
         <div className="flex justify-between items-start px-4 py-2 bg-white">
@@ -250,7 +267,7 @@ export default function DistribucionView({
             )}
             {groups.map((group) => {
               const gs = stats(group.items)
-              const total = group.items.reduce((sum, i) => sum + i.salePrice, 0)
+              const total = group.items.reduce((sum, i) => sum + i.salePrice * i.quantity, 0)
               const gOpen = isGroupOpen(sectionKey + ':' + group.key)
               return (
                 <div key={group.key} className="border-t border-brand-gray">

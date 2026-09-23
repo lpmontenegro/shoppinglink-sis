@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { uploadImage } from '@/lib/cloudinary'
+import { safeUploadFolder, uploadImage } from '@/lib/cloudinary'
 
 // Recibe una foto (FormData, campo "file") y la sube a Cloudinary, devuelve
 // { url }. Protegido por el middleware de auth igual que el resto de /api.
@@ -29,7 +29,9 @@ export async function POST(req: NextRequest) {
 
   try {
     const buffer = Buffer.from(await file.arrayBuffer())
-    const url = await uploadImage(buffer)
+    const folderRaw = form.get('folder')
+    const folder = safeUploadFolder(typeof folderRaw === 'string' ? folderRaw : null)
+    const url = await uploadImage(buffer, folder)
     return NextResponse.json({ url })
   } catch (e) {
     console.error('Error subiendo foto a Cloudinary', e)

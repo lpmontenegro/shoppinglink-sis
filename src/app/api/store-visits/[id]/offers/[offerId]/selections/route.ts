@@ -52,17 +52,24 @@ export async function POST(
         })
       }
 
-      const note = `Tienda: ${offer.storeVisit.store}${quantity > 1 ? ` · x${quantity}` : ''}`
+      const note = `Tienda: ${offer.storeVisit.store}`
 
+      // costUsd/cost/salePrice quedan por unidad (igual que en Pedidos) — la
+      // cantidad va en su propio campo y todo lo que muestra totales
+      // (Distribución, Pedidos) multiplica por quantity. Antes solo
+      // salePrice se multiplicaba por la cantidad y cost/costUsd se
+      // guardaban como si fuera 1 unidad, lo que subestimaba el costo real
+      // en pedidos con más de una unidad.
       const orderItem = await tx.orderItem.create({
         data: {
           orderId: order.id,
           purchaseType: 'ADVANCE',
           productName: offer.productName,
           photoUrl: offer.photoUrl,
+          quantity,
           costUsd: offer.costUsd,
           cost: offer.cost,
-          salePrice: Number(offer.finalPrice) * quantity,
+          salePrice: offer.finalPrice,
           notes: note,
         },
       })

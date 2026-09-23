@@ -29,6 +29,7 @@ type PedidoItem = {
   photoUrl: string | null
   productLink: string | null
   purchaseType: 'ADVANCE' | 'COURIER'
+  quantity?: number
   costUsd: string | number | null
   cost: string | number
   salePrice: string | number
@@ -49,6 +50,7 @@ type ItemState = {
   productName: string
   photoUrl: string
   productLink: string
+  quantity: string
   costUsd: string
   cost: string
   salePrice: string
@@ -61,6 +63,7 @@ function emptyItem(): ItemState {
     productName: '',
     photoUrl: '',
     productLink: '',
+    quantity: '1',
     costUsd: '',
     cost: '',
     salePrice: '',
@@ -76,6 +79,7 @@ function itemsFromPedido(pedido?: Pedido | null): ItemState[] {
     productName: i.productName ?? '',
     photoUrl: i.photoUrl ?? '',
     productLink: i.productLink ?? '',
+    quantity: String(i.quantity ?? 1),
     costUsd: i.costUsd != null ? String(i.costUsd) : '',
     cost: String(i.cost),
     salePrice: String(i.salePrice),
@@ -88,6 +92,7 @@ function OrderItemFields({
   index,
   rate,
   taxRate,
+  photoFolder,
   onChange,
   onRemove,
 }: {
@@ -95,6 +100,7 @@ function OrderItemFields({
   index: number
   rate: number | null
   taxRate: number
+  photoFolder?: string
   onChange: (patch: Partial<ItemState>) => void
   onRemove?: () => void
 }) {
@@ -128,6 +134,8 @@ function OrderItemFields({
     return price - costBasisQ
   }, [item.salePrice, costBasisQ])
 
+  const qty = Math.max(1, parseInt(item.quantity, 10) || 1)
+
   return (
     <div className="relative border border-brand-gray rounded-lg p-3">
       <div className="flex items-center justify-between mb-2">
@@ -145,16 +153,30 @@ function OrderItemFields({
       </div>
 
       <div className="mb-2">
-        <input
-          placeholder="Nombre corto del producto (ej. Zapatos Nike 8.5)"
-          value={item.productName}
-          onChange={(e) => onChange({ productName: e.target.value })}
-          className="w-full px-3 py-2 border border-brand-gray rounded text-sm mb-2"
-        />
+        <div className="flex gap-2 mb-2">
+          <input
+            placeholder="Nombre corto del producto (ej. Zapatos Nike 8.5)"
+            value={item.productName}
+            onChange={(e) => onChange({ productName: e.target.value })}
+            className="flex-1 px-3 py-2 border border-brand-gray rounded text-sm"
+          />
+          <div className="w-20 shrink-0">
+            <label className="block text-[10px] text-brand-gray-dk mb-0.5 text-center">Cant.</label>
+            <input
+              type="number"
+              min={1}
+              title="Cantidad de unidades idénticas"
+              value={item.quantity}
+              onChange={(e) => onChange({ quantity: e.target.value })}
+              className="w-full px-2 py-2 border border-brand-gray rounded text-sm text-center"
+            />
+          </div>
+        </div>
         <PhotoInput
           value={item.photoUrl || null}
           onChange={(url) => onChange({ photoUrl: url ?? '' })}
           label="Foto del producto"
+          folder={photoFolder}
         />
       </div>
 
@@ -223,7 +245,13 @@ function OrderItemFields({
         <MoneyInput required prefix="Q" value={item.salePrice} onChange={(v) => onChange({ salePrice: v })} />
         {profit != null && (
           <p className={`mt-1 text-xs ${profit >= 0 ? 'text-green-700' : 'text-red-600'}`}>
-            Ganancia: {formatGTQ(profit)}
+            Ganancia por unidad: {formatGTQ(profit)}
+            {qty > 1 && ` · Ganancia total (x${qty}): ${formatGTQ(profit * qty)}`}
+          </p>
+        )}
+        {qty > 1 && parseFloat(item.salePrice) > 0 && (
+          <p className="mt-1 text-xs text-brand-gray-dk">
+            Total a cobrar por este producto (x{qty}): {formatGTQ((parseFloat(item.salePrice) || 0) * qty)}
           </p>
         )}
       </div>
@@ -278,6 +306,13 @@ export default function PedidoModal({
     return ciclos.find((c) => c.id === cycleId)?.taxRate ?? DEFAULT_TAX_RATE
   }, [ciclos, cycleId])
 
+  // Carpeta de Cloudinary para las fotos de este pedido — organizada por
+  // código de ciclo, así se puede limpiar/archivar por ciclo más adelante.
+  const photoFolder = useMemo(() => {
+    const code = ciclos.find((c) => c.id === cycleId)?.code
+    return code ? `${code}/pedidos` : undefined
+  }, [ciclos, cycleId])
+
   function updateItem(i: number, patch: Partial<ItemState>) {
     setItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, ...patch } : it)))
   }
@@ -304,6 +339,7 @@ export default function PedidoModal({
         productName: it.productName || null,
         photoUrl: it.photoUrl || null,
         productLink: it.purchaseType === 'ADVANCE' ? it.productLink : null,
+        quantity: Math.max(1, parseInt(it.quantity, 10) || 1),
         costUsd: it.purchaseType === 'ADVANCE' ? parseFloat(it.costUsd) : null,
         cost: it.purchaseType === 'ADVANCE' ? 0 : parseFloat(it.cost) || 0,
         salePrice: parseFloat(it.salePrice) || 0,
@@ -422,6 +458,7 @@ export default function PedidoModal({
                 index={i}
                 rate={rate}
                 taxRate={selectedCycleTaxRate}
+                photoFolder={photoFolder}
                 onChange={(patch) => updateItem(i, patch)}
                 onRemove={items.length > 1 ? () => removeItem(i) : undefined}
               />

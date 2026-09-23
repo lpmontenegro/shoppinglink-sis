@@ -10,6 +10,7 @@ type Item = {
   productLink: string | null
   notes: string | null
   purchaseType: string
+  quantity: number
   confirmed: boolean
   packed: boolean
   packedIn: string | null
@@ -21,13 +22,18 @@ function ProductCell({ item }: { item: Item }) {
   return (
     <div className="flex items-center gap-2">
       {item.photoUrl && (
-        <img
-          src={item.photoUrl}
-          alt=""
-          className="w-8 h-8 rounded object-cover border border-brand-gray shrink-0"
-        />
+        <a href={item.photoUrl} target="_blank" rel="noreferrer" title="Ver foto en tamaño grande">
+          <img
+            src={item.photoUrl}
+            alt=""
+            className="w-8 h-8 rounded object-cover border border-brand-gray shrink-0 hover:opacity-80"
+          />
+        </a>
       )}
-      <span className="truncate">{item.productName || item.productLink || item.notes || '—'}</span>
+      <span className="truncate">
+        {item.productName || item.productLink || item.notes || '—'}
+        {item.quantity > 1 && <span className="ml-1 text-xs font-medium text-brand-blue">×{item.quantity}</span>}
+      </span>
     </div>
   )
 }

@@ -36,9 +36,10 @@ export async function PATCH(
       include: { client: true },
     })
     if (existing.orderItemId) {
+      // salePrice queda por unidad (offer.finalPrice) — solo quantity cambia.
       await tx.orderItem.update({
         where: { id: existing.orderItemId },
-        data: { salePrice: Number(existing.offerItem.finalPrice) * quantity },
+        data: { quantity, salePrice: existing.offerItem.finalPrice },
       })
     }
     return selection

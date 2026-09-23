@@ -14,6 +14,7 @@ export const orderItemSchema = z
     photoUrl: z.string().trim().optional().nullable(),
     productLink: z.string().trim().optional().nullable(),
     purchaseType: z.enum(PURCHASE_TYPES),
+    quantity: z.coerce.number().int().min(1, 'Mínimo 1').default(1),
     costUsd: z.coerce.number().nonnegative().optional().nullable(),
     cost: z.coerce.number().nonnegative('El costo no puede ser negativo'),
     salePrice: z.coerce.number().nonnegative('El precio de venta no puede ser negativo'),

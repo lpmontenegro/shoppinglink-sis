@@ -33,10 +33,15 @@ export default function PhotoInput({
   value,
   onChange,
   label = 'Foto',
+  folder,
 }: {
   value: string | null
   onChange: (url: string | null) => void
   label?: string
+  // Subcarpeta de Cloudinary donde se guarda (ej. "2026-10/pedidos") — así se
+  // puede limpiar/archivar por ciclo más adelante. Si no se manda, el
+  // servidor usa una carpeta genérica.
+  folder?: string
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
@@ -57,6 +62,7 @@ export default function PhotoInput({
       const blob: Blob = await compressImage(file).catch(() => file)
       const form = new FormData()
       form.append('file', blob, 'foto.jpg')
+      if (folder) form.append('folder', folder)
       const res = await fetch('/api/upload', { method: 'POST', body: form })
       const data = await res.json().catch(() => null)
       if (!res.ok || !data?.url) {

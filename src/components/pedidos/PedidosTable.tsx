@@ -12,6 +12,7 @@ type OrderItem = {
   photoUrl: string | null
   productLink: string | null
   purchaseType: 'ADVANCE' | 'COURIER'
+  quantity: number
   costUsd: string | number | null
   cost: string | number
   salePrice: string | number
@@ -194,6 +195,9 @@ export default function PedidosTable({
                             <div className="truncate">
                               <div className="truncate font-medium text-brand-black">
                                 {item.productName || item.productLink || item.notes || '—'}
+                                {item.quantity > 1 && (
+                                  <span className="ml-1 text-xs font-normal text-brand-blue">×{item.quantity}</span>
+                                )}
                               </div>
                               {item.productName && (item.productLink || item.notes) && (
                                 <div className="truncate text-xs text-brand-gray-dk">
@@ -214,7 +218,14 @@ export default function PedidosTable({
                             </span>
                           )}
                         </td>
-                        <td className="px-4 py-2 whitespace-nowrap">{formatGTQ(item.salePrice)}</td>
+                        <td className="px-4 py-2 whitespace-nowrap">
+                          {formatGTQ(item.salePrice)}
+                          {item.quantity > 1 && (
+                            <span className="block text-xs text-brand-gray-dk">
+                              Total ×{item.quantity}: {formatGTQ(Number(item.salePrice) * item.quantity)}
+                            </span>
+                          )}
+                        </td>
                         <td className="px-4 py-2">
                           <StatusBadge label={status.label} colorClass={status.color} />
                         </td>

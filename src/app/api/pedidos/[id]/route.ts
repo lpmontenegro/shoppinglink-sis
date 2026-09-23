@@ -47,6 +47,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       photoUrl: item.photoUrl || null,
       productLink: item.purchaseType === 'ADVANCE' ? item.productLink || null : null,
       purchaseType: item.purchaseType,
+      quantity: item.quantity,
       costUsd: item.purchaseType === 'ADVANCE' ? item.costUsd : null,
       cost:
         item.purchaseType === 'ADVANCE' && item.costUsd != null

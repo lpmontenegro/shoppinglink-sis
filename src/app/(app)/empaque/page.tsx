@@ -35,6 +35,7 @@ export default async function EmpaquePage() {
     productLink: i.productLink,
     notes: i.notes,
     purchaseType: i.purchaseType,
+    quantity: i.quantity,
     confirmed: i.confirmed,
     packed: i.packed,
     packedIn: i.packedIn,

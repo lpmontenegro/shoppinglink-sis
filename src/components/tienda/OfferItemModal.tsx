@@ -34,12 +34,14 @@ export default function OfferItemModal({
   visitId,
   offer,
   taxRate,
+  cycleCode,
   onClose,
   onSaved,
 }: {
   visitId: string
   offer?: OfferItem | null
   taxRate: number
+  cycleCode?: string
   onClose: () => void
   onSaved: () => void
 }) {
@@ -114,7 +116,12 @@ export default function OfferItemModal({
           />
         </div>
 
-        <PhotoInput value={photoUrl} onChange={setPhotoUrl} label="Foto del producto" />
+        <PhotoInput
+          value={photoUrl}
+          onChange={setPhotoUrl}
+          label="Foto del producto"
+          folder={cycleCode ? `${cycleCode}/tienda` : undefined}
+        />
 
         <div>
           <label className="block text-xs text-brand-gray-dk mb-1">Costo (USD)</label>

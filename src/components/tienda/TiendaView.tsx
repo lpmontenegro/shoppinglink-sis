@@ -70,6 +70,26 @@ function buildWhatsAppText(visit: StoreVisit) {
   return lines.join('\n')
 }
 
+// Lista de compras: solo lo que los clientes ya pidieron y todavía no se ha
+// comprado — para llevar a la tienda (producto + cantidad, nada más).
+function shoppingListRows(visit: StoreVisit) {
+  return visit.offers.filter((o) => !o.purchased && claimedQty(o) > 0)
+}
+
+function buildShoppingListText(visit: StoreVisit) {
+  const rows = shoppingListRows(visit)
+  const lines = [`🧾 Lista de compras — ${visit.store} — ${fmtDate(visit.visitDate)}`, '']
+  if (rows.length === 0) {
+    lines.push('(nadie ha pedido nada todavía, o ya se compró todo)')
+  } else {
+    rows.forEach((o, i) => {
+      const qty = claimedQty(o)
+      lines.push(`${i + 1}. ${o.productName} — ${qty} unidad${qty === 1 ? '' : 'es'}`)
+    })
+  }
+  return lines.join('\n')
+}
+
 export default function TiendaView({
   visits,
   clientes,
@@ -90,6 +110,8 @@ export default function TiendaView({
   const [selQty, setSelQty] = useState<Record<string, string>>({})
   const [error, setError] = useState('')
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [copiedListId, setCopiedListId] = useState<string | null>(null)
+  const [openList, setOpenList] = useState<Record<string, boolean>>({})
 
   const filtered = useMemo(() => {
     if (cycleFilter === 'all') return visits
@@ -173,6 +195,21 @@ export default function TiendaView({
     }
   }
 
+  async function copyShoppingList(visit: StoreVisit) {
+    const text = buildShoppingListText(visit)
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopiedListId(visit.id)
+      setTimeout(() => setCopiedListId((id) => (id === visit.id ? null : id)), 2000)
+    } catch {
+      window.prompt('Copia este texto manualmente:', text)
+    }
+  }
+
+  function toggleList(visitId: string) {
+    setOpenList((prev) => ({ ...prev, [visitId]: !prev[visitId] }))
+  }
+
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
@@ -229,6 +266,11 @@ export default function TiendaView({
                     {copiedId === visit.id ? 'Copiado ✓' : 'Copiar para WhatsApp'}
                   </button>
                 )}
+                {shoppingListRows(visit).length > 0 && (
+                  <button onClick={() => toggleList(visit.id)} className="text-sm text-brand-blue">
+                    {openList[visit.id] ? 'Ocultar lista de compras' : '🧾 Lista de compras'}
+                  </button>
+                )}
                 <button onClick={() => setEditingVisit(visit)} className="text-sm text-brand-blue">
                   Editar
                 </button>
@@ -255,6 +297,27 @@ export default function TiendaView({
                 </button>
               </div>
             </div>
+
+            {openList[visit.id] && (
+              <div className="px-4 pt-3 pb-1 bg-amber-50 border-t border-brand-gray">
+                <div className="flex justify-between items-center mb-2">
+                  <p className="text-sm font-medium text-brand-black">
+                    Lista de compras — lo pedido por clientes, todavía no comprado
+                  </p>
+                  <button onClick={() => copyShoppingList(visit)} className="text-xs text-brand-blue shrink-0">
+                    {copiedListId === visit.id ? 'Copiado ✓' : 'Copiar'}
+                  </button>
+                </div>
+                <ul className="mb-3 text-sm list-decimal list-inside space-y-0.5">
+                  {shoppingListRows(visit).map((o) => (
+                    <li key={o.id}>
+                      {o.productName} — <span className="font-medium">{claimedQty(o)}</span> unidad
+                      {claimedQty(o) === 1 ? '' : 'es'}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             <div className="p-4 space-y-3">
               {visit.offers.length === 0 && (
@@ -395,7 +458,8 @@ export default function TiendaView({
         <OfferItemModal
           visitId={offerModal.visitId}
           offer={offerModal.offer}
-          taxRate={taxRateFor(filtered.find((v) => v.id === offerModal.visitId)?.cycleId ?? cycleFilter)}
+          taxRate={taxRateFor(visits.find((v) => v.id === offerModal.visitId)?.cycleId ?? cycleFilter)}
+          cycleCode={ciclos.find((c) => c.id === visits.find((v) => v.id === offerModal.visitId)?.cycleId)?.code}
           onClose={() => setOfferModal(null)}
           onSaved={refresh}
         />
