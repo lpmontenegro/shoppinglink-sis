@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma'
-import { getBalancesForClients } from '@/lib/finanzas'
+import { getDistributionItems } from '@/lib/distribucion'
 import DistribucionView from '@/components/distribucion/DistribucionView'
 
 export default async function DistribucionPage() {
@@ -15,49 +15,7 @@ export default async function DistribucionPage() {
   ])
 
   const defaultCycleId = activeCycle?.id ?? ciclos[0]?.id
-
-  const items = defaultCycleId
-    ? await prisma.orderItem.findMany({
-        where: { canceled: false, packed: true, packedIn: 'SUITCASE', order: { cycleId: defaultCycleId } },
-        include: {
-          order: {
-            include: {
-              client: { include: { pickupPlace: true } },
-            },
-          },
-        },
-        orderBy: { createdAt: 'asc' },
-      })
-    : []
-
-  const balances = defaultCycleId
-    ? await getBalancesForClients(
-        items.map((i) => i.order.client.id),
-        defaultCycleId
-      )
-    : {}
-
-  const plainItems = items.map((i) => ({
-    id: i.id,
-    orderId: i.orderId,
-    productName: i.productName,
-    photoUrl: i.photoUrl,
-    productLink: i.productLink,
-    notes: i.notes,
-    quantity: i.quantity,
-    salePrice: Number(i.salePrice),
-    delivered: i.delivered,
-    client: {
-      id: i.order.client.id,
-      fullName: i.order.client.fullName,
-      phones: i.order.client.phones,
-      fulfillmentMethod: i.order.client.fulfillmentMethod,
-      zone: i.order.client.zone,
-      deliveryAddress: i.order.client.deliveryAddress,
-      pickupPlace: i.order.client.pickupPlace ? { name: i.order.client.pickupPlace.name } : null,
-      balance: balances[i.order.client.id] ?? 0,
-    },
-  }))
+  const plainItems = defaultCycleId ? await getDistributionItems(defaultCycleId, 'SUITCASE') : []
 
   return (
     <DistribucionView

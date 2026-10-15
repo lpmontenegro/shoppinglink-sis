@@ -52,8 +52,9 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       cost:
         item.purchaseType === 'ADVANCE' && item.costUsd != null
           ? usdToGtq(item.costUsd, rate)
-          : item.cost,
-      salePrice: item.salePrice,
+          : item.cost ?? (item.purchaseType === 'COURIER' ? 0 : null),
+      salePrice: item.salePrice ?? null,
+      store: item.store || null,
       notes: item.notes || null,
     }
   }

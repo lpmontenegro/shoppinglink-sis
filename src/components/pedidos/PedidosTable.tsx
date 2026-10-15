@@ -15,8 +15,8 @@ type OrderItem = {
   purchaseType: 'ADVANCE' | 'COURIER'
   quantity: number
   costUsd: string | number | null
-  cost: string | number
-  salePrice: string | number
+  cost: string | number | null
+  salePrice: string | number | null
   confirmed: boolean
   packed: boolean
   packedIn: string | null
@@ -203,10 +203,10 @@ export default function PedidosTable({
                           </div>
                         </td>
                         <td className="px-4 py-2 whitespace-nowrap">
-                          {item.purchaseType === 'ADVANCE' ? 'Anticipada' : 'Courier'}
+                          {item.purchaseType === 'ADVANCE' ? 'Anticipada' : 'Directo'}
                         </td>
                         <td className="px-4 py-2 whitespace-nowrap">
-                          {formatGTQ(item.cost)}
+                          {item.cost != null ? formatGTQ(item.cost) : '—'}
                           {item.costUsd != null && (
                             <span className="block text-xs text-brand-gray-dk">
                               {formatUSD(item.costUsd)}
@@ -214,8 +214,12 @@ export default function PedidosTable({
                           )}
                         </td>
                         <td className="px-4 py-2 whitespace-nowrap">
-                          {formatGTQ(item.salePrice)}
-                          {item.quantity > 1 && (
+                          {item.salePrice == null ? (
+                            <span className="text-xs text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded">Precio pendiente</span>
+                          ) : (
+                            formatGTQ(item.salePrice)
+                          )}
+                          {item.quantity > 1 && item.salePrice != null && (
                             <span className="block text-xs text-brand-gray-dk">
                               Total ×{item.quantity}: {formatGTQ(Number(item.salePrice) * item.quantity)}
                             </span>

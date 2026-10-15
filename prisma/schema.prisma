@@ -30,6 +30,10 @@ model Client {
   pickupPlaceId     String?
   notes             String?
   active            Boolean           @default(true)
+  // Cliente interno del sistema (ej. "Sin asignar", donde quedan los
+  // productos que todavía no tienen dueño). No aparece en listas de
+  // clientes, estados de cuenta ni distribución.
+  isSystem          Boolean           @default(false)
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
 
@@ -160,11 +164,22 @@ model OrderItem {
   purchaseType   PurchaseType
   quantity       Int            @default(1) // cuántas unidades idénticas de este producto — costUsd/cost/salePrice son SIEMPRE por unidad, el total se calcula como precio × quantity
   costUsd        Decimal?       @db.Decimal(10, 2) // costo en USD tal como se compra, por unidad (solo aplica a ADVANCE; tiendas/online cobran en $)
-  cost           Decimal        @db.Decimal(10, 2) // costo en quetzales por unidad: costUsd * exchangeRate del pedido (ADVANCE) o costo directo en Q (COURIER)
-  salePrice      Decimal        @db.Decimal(10, 2) // precio cobrado al cliente por unidad, siempre en quetzales
+  cost           Decimal?       @db.Decimal(10, 2) // costo en quetzales por unidad: costUsd * exchangeRate del pedido (ADVANCE) o costo directo en Q (COURIER); null = costo todavía sin anotar
+  salePrice      Decimal?       @db.Decimal(10, 2) // precio cobrado al cliente por unidad, siempre en quetzales; null = PRECIO PENDIENTE (las dueñas todavía no lo fijan — no se suma a totales ni saldos)
+  store          String? // tienda donde se compró (Amazon, Costco, Ross...) — informativo, para filtrar
+  importRef      String? // referencia al origen si vino de una importación (ej. "SEPT!123" = fila 123 de la hoja SEPT), para trazabilidad
   confirmed      Boolean        @default(false)
   packed         Boolean        @default(false)
   packedIn       PackingMethod?
+  // Recepción en Guatemala: el producto llegó físicamente (en la maleta con
+  // las administradoras, o en la caja por courier). Distribución solo deja
+  // marcar como entregado lo que ya se recibió.
+  received       Boolean        @default(false)
+  receivedAt     DateTime?
+  // Problema al recibir (dañado, equivocado, etc.): el producto no se vende
+  // y se devuelve si se puede. Un producto con problema queda además
+  // canceled=true (motivo en canceledReason), así sale de todos los totales.
+  problem        Boolean        @default(false)
   delivered      Boolean        @default(false)
   deliveryDate   DateTime?
   canceled       Boolean        @default(false)
@@ -289,6 +304,9 @@ model ClientStatement {
   totalAmount Decimal  @db.Decimal(10, 2) @default(0)
   totalPaid   Decimal  @db.Decimal(10, 2) @default(0)
   balance     Decimal  @db.Decimal(10, 2) @default(0)
+  // Cargo de delivery opcional por entrega (casi siempre va incluido = 0).
+  deliveryFeeSuitcase Decimal @db.Decimal(10, 2) @default(0)
+  deliveryFeeBox      Decimal @db.Decimal(10, 2) @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -304,6 +322,10 @@ model Payment {
   statementId String
   amount      Decimal  @db.Decimal(10, 2)
   paymentDate DateTime
+  // A qué entrega se aplica: SUITCASE = entrega 1 (maleta), BOX = entrega 2
+  // (caja). null = anticipo general, se aplica primero al saldo de la
+  // entrega 1 y lo que sobre a la entrega 2.
+  part        PackingMethod?
   notes       String?
   createdAt   DateTime @default(now())
 

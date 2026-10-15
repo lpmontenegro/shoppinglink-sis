@@ -32,6 +32,21 @@ export async function PATCH(
   }
   if (data.canceled === false) {
     updateData.canceledReason = null
+    updateData.problem = false
+  }
+  if (data.received === true) {
+    updateData.receivedAt = new Date()
+  } else if (data.received === false) {
+    updateData.receivedAt = null
+  }
+  // Problema al recibir: sale de la venta (cancelado con motivo). Quitar el
+  // problema lo reactiva.
+  if (data.problem === true) {
+    updateData.canceled = true
+    updateData.canceledReason = data.canceledReason || 'Problema al recibir'
+  } else if (data.problem === false) {
+    updateData.canceled = false
+    updateData.canceledReason = null
   }
 
   const item = await prisma.orderItem.update({

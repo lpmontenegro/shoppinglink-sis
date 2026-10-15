@@ -2,8 +2,8 @@ import Link from 'next/link'
 import { prisma } from '@/lib/prisma'
 
 export default async function Home() {
-  const [activeClients, openCycle, pendingOrders, pendingStorePurchases] = await Promise.all([
-    prisma.client.count({ where: { active: true } }),
+  const [activeClients, openCycle, pendingOrders, pendingStorePurchases, toComplete] = await Promise.all([
+    prisma.client.count({ where: { active: true, isSystem: false } }),
     prisma.cycle.findFirst({
       where: { status: 'OPEN' },
       orderBy: { openDate: 'desc' },
@@ -14,6 +14,14 @@ export default async function Home() {
     prisma.storeOfferItem.count({
       where: { purchased: false, storeVisit: { status: { not: 'DONE' } } },
     }),
+    // productos sin precio o sin cliente en ciclos que no están cerrados
+    prisma.orderItem.count({
+      where: {
+        canceled: false,
+        order: { cycle: { status: { not: 'DONE' } } },
+        OR: [{ salePrice: null }, { order: { client: { isSystem: true } } }],
+      },
+    }),
   ])
 
   return (
@@ -23,7 +31,7 @@ export default async function Home() {
         Resumen rápido de la operación.
       </p>
 
-      <div className="mt-6 grid grid-cols-1 sm:grid-cols-4 gap-4">
+      <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-4">
         <Link
           href="/clientes"
           className="block bg-white border border-brand-gray rounded-lg p-5 hover:border-brand-blue"
@@ -61,6 +69,14 @@ export default async function Home() {
         >
           <p className="text-sm text-brand-gray-dk">Compras en tienda pendientes</p>
           <p className="mt-1 text-3xl font-bold text-brand-black">{pendingStorePurchases}</p>
+        </Link>
+
+        <Link
+          href="/pendientes"
+          className="block bg-white border border-brand-gray rounded-lg p-5 hover:border-brand-blue"
+        >
+          <p className="text-sm text-brand-gray-dk">Productos sin precio o sin cliente</p>
+          <p className={`mt-1 text-3xl font-bold ${toComplete > 0 ? 'text-amber-700' : 'text-brand-black'}`}>{toComplete}</p>
         </Link>
       </div>
     </div>

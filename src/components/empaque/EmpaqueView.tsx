@@ -141,7 +141,7 @@ export default function EmpaqueView({
                       <ProductCell item={item} />
                     </td>
                     <td className="px-4 py-2">{item.clientName}</td>
-                    <td className="px-4 py-2">{item.purchaseType === 'ADVANCE' ? 'Anticipada' : 'Courier'}</td>
+                    <td className="px-4 py-2">{item.purchaseType === 'ADVANCE' ? 'Anticipada' : 'Directo'}</td>
                     <td className="px-4 py-2 text-right whitespace-nowrap space-x-2">
                       <button
                         onClick={() => setPacked(item.orderId, item.id, 'SUITCASE')}

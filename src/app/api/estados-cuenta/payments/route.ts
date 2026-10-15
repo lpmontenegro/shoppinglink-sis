@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { paymentSchema } from '@/lib/validations/finanzas'
-import { computeClientBalance, syncClientStatementCache } from '@/lib/finanzas'
+import { syncClientStatementCache } from '@/lib/finanzas'
 
 // Registra un pago de un cliente para un ciclo. El ClientStatement
 // (contenedor del pago) se crea la primera vez que un cliente paga algo —
@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
   }
 
-  const { clientId, cycleId, amount, paymentDate, notes } = parsed.data
+  const { clientId, cycleId, amount, paymentDate, notes, part } = parsed.data
 
   const statement = await prisma.clientStatement.upsert({
     where: { clientId_cycleId: { clientId, cycleId } },
@@ -22,11 +22,10 @@ export async function POST(req: NextRequest) {
   })
 
   await prisma.payment.create({
-    data: { statementId: statement.id, amount, paymentDate, notes: notes || null },
+    data: { statementId: statement.id, amount, paymentDate, part: part ?? null, notes: notes || null },
   })
 
-  await syncClientStatementCache(clientId, cycleId)
-  const result = await computeClientBalance(clientId, cycleId)
+  const result = await syncClientStatementCache(clientId, cycleId)
 
   return NextResponse.json(result, { status: 201 })
 }

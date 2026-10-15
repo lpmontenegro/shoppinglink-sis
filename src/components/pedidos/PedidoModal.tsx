@@ -5,7 +5,7 @@ import Modal from '@/components/Modal'
 import MoneyInput from '@/components/MoneyInput'
 import PhotoInput from '@/components/PhotoInput'
 import { formatGTQ, usdToGtq } from '@/lib/currency'
-import { costWithTax, DEFAULT_TAX_RATE, suggestedSalePriceUsd } from '@/lib/pricing'
+import { costWithTax, DEFAULT_TAX_RATE, suggestedSalePriceUsd, COURIER_FEE_USD } from '@/lib/pricing'
 
 type ClienteOption = { id: string; fullName: string }
 type CicloOption = { id: string; code: string; status: string; taxRate: number }
@@ -31,8 +31,8 @@ type PedidoItem = {
   purchaseType: 'ADVANCE' | 'COURIER'
   quantity?: number
   costUsd: string | number | null
-  cost: string | number
-  salePrice: string | number
+  cost: string | number | null
+  salePrice: string | number | null
   notes: string | null
 }
 
@@ -81,8 +81,8 @@ function itemsFromPedido(pedido?: Pedido | null): ItemState[] {
     productLink: i.productLink ?? '',
     quantity: String(i.quantity ?? 1),
     costUsd: i.costUsd != null ? String(i.costUsd) : '',
-    cost: String(i.cost),
-    salePrice: String(i.salePrice),
+    cost: i.cost != null ? String(i.cost) : '',
+    salePrice: i.salePrice != null ? String(i.salePrice) : '',
     notes: i.notes ?? '',
   }))
 }
@@ -195,7 +195,7 @@ function OrderItemFields({
             checked={item.purchaseType === 'COURIER'}
             onChange={() => onChange({ purchaseType: 'COURIER' })}
           />
-          Courier
+          Directo (courier)
         </label>
       </div>
 
@@ -241,8 +241,23 @@ function OrderItemFields({
       )}
 
       <div className="mt-2">
-        <label className="block text-xs text-brand-gray-dk mb-1">Precio de venta al cliente (Q)</label>
-        <MoneyInput required prefix="Q" value={item.salePrice} onChange={(v) => onChange({ salePrice: v })} />
+        <label className="block text-xs text-brand-gray-dk mb-1">
+          Precio de venta al cliente (Q) — vacío = precio pendiente (no se cobra hasta que se ponga)
+        </label>
+        <MoneyInput prefix="Q" value={item.salePrice} onChange={(v) => onChange({ salePrice: v })} />
+        {item.purchaseType === 'COURIER' && rate && (
+          <p className="mt-1 text-xs text-brand-gray-dk">
+            Tarifa sugerida de traída: {formatGTQ(Math.round(COURIER_FEE_USD * rate))} (~${COURIER_FEE_USD}; más si es
+            grande/pesado){' '}
+            <button
+              type="button"
+              onClick={() => onChange({ salePrice: String(Math.round(COURIER_FEE_USD * rate)) })}
+              className="text-brand-blue underline"
+            >
+              usar
+            </button>
+          </p>
+        )}
         {profit != null && (
           <p className={`mt-1 text-xs ${profit >= 0 ? 'text-green-700' : 'text-red-600'}`}>
             Ganancia por unidad: {formatGTQ(profit)}
@@ -340,9 +355,10 @@ export default function PedidoModal({
         photoUrl: it.photoUrl || null,
         productLink: it.purchaseType === 'ADVANCE' ? it.productLink : null,
         quantity: Math.max(1, parseInt(it.quantity, 10) || 1),
-        costUsd: it.purchaseType === 'ADVANCE' ? parseFloat(it.costUsd) : null,
-        cost: it.purchaseType === 'ADVANCE' ? 0 : parseFloat(it.cost) || 0,
-        salePrice: parseFloat(it.salePrice) || 0,
+        costUsd: it.purchaseType === 'ADVANCE' && Number.isFinite(parseFloat(it.costUsd)) ? parseFloat(it.costUsd) : null,
+        cost: it.purchaseType === 'ADVANCE' ? null : Number.isFinite(parseFloat(it.cost)) ? parseFloat(it.cost) : null,
+        // vacío = precio pendiente
+        salePrice: Number.isFinite(parseFloat(it.salePrice)) ? parseFloat(it.salePrice) : null,
         notes: it.notes || null,
       })),
     }

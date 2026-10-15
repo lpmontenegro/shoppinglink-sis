@@ -8,7 +8,7 @@ export default async function PedidosPage() {
       orderBy: { orderDate: 'desc' },
     }),
     prisma.client.findMany({
-      where: { active: true },
+      where: { active: true, isSystem: false },
       orderBy: { fullName: 'asc' },
       select: { id: true, fullName: true },
     }),

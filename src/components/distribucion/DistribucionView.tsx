@@ -12,7 +12,8 @@ type Item = {
   productLink: string | null
   notes: string | null
   quantity: number
-  salePrice: number
+  salePrice: number | null
+  received: boolean
   delivered: boolean
   client: {
     id: string
@@ -67,6 +68,10 @@ function groupByZone(items: Item[]): ZoneGroup[] {
   return Array.from(byZone.entries())
     .map(([key, its]) => ({ key, items: its, clients: groupByClient(its) }))
     .sort((a, b) => a.key.localeCompare(b.key))
+}
+
+function lineTotal(i: Item) {
+  return i.salePrice == null ? 0 : i.salePrice * i.quantity
 }
 
 function stats(items: Item[]) {
@@ -137,7 +142,8 @@ export default function DistribucionView({
   }
 
   async function markGroupDelivered(group: ZoneGroup) {
-    const pending = group.items.filter((i) => !i.delivered)
+    // Solo lo que ya llegó a Guatemala se puede marcar como entregado.
+    const pending = group.items.filter((i) => !i.delivered && i.received)
     if (pending.length === 0) return
     await Promise.all(
       pending.map((i) =>
@@ -175,7 +181,7 @@ export default function DistribucionView({
       <div
         key={item.id}
         className={`flex items-center gap-3 px-4 py-2 border-t border-brand-gray-lt ${
-          item.delivered ? 'opacity-50' : ''
+          item.delivered || !item.received ? 'opacity-50' : ''
         }`}
       >
         {item.photoUrl && <PhotoThumb src={item.photoUrl} size="w-9 h-9" />}
@@ -183,7 +189,8 @@ export default function DistribucionView({
           <input
             type="checkbox"
             checked={item.delivered}
-            disabled={busy[item.id]}
+            disabled={busy[item.id] || (!item.received && !item.delivered)}
+            title={!item.received ? 'Todavía no ha llegado — márcalo primero en Recepción' : undefined}
             onChange={() => toggleDelivered(item)}
             className="w-4 h-4 shrink-0"
           />
@@ -192,12 +199,19 @@ export default function DistribucionView({
               {item.productName || item.productLink || item.notes || 'Producto'}
               {item.quantity > 1 && <span className="ml-1 text-xs font-medium text-brand-blue">×{item.quantity}</span>}
             </span>
+            {!item.received && (
+              <span className="block text-xs text-amber-700">⏳ No ha llegado todavía (ver Recepción)</span>
+            )}
             {item.productName && item.notes && (
               <span className="block text-xs text-brand-gray-dk italic truncate">Nota: {item.notes}</span>
             )}
           </span>
           <span className="text-sm font-medium text-brand-black shrink-0">
-            {formatGTQ(item.salePrice * item.quantity)}
+            {item.salePrice == null ? (
+              <span className="text-xs text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded">Precio pendiente</span>
+            ) : (
+              formatGTQ(item.salePrice * item.quantity)
+            )}
           </span>
         </label>
       </div>
@@ -206,7 +220,7 @@ export default function DistribucionView({
 
   function renderClientCard(group: ClientGroup) {
     const s = stats(group.items)
-    const total = group.items.reduce((sum, i) => sum + i.salePrice * i.quantity, 0)
+    const total = group.items.reduce((sum, i) => sum + lineTotal(i), 0)
     return (
       <div key={group.client.id} className="border-t border-brand-gray">
         <div className="flex justify-between items-start px-4 py-2 bg-white">
@@ -220,7 +234,8 @@ export default function DistribucionView({
             {group.client.phones[0] && <p className="text-xs text-brand-gray-dk">{group.client.phones[0]}</p>}
             {group.client.balance > 0 && (
               <p className="mt-1 inline-block text-xs font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded">
-                Saldo pendiente (ciclo): {formatGTQ(group.client.balance)}
+                Saldo a cobrar ({packedIn === 'SUITCASE' ? 'entrega 1 · maleta' : 'entrega 2 · caja'}):{' '}
+                {formatGTQ(group.client.balance)}
               </p>
             )}
           </div>
@@ -260,7 +275,7 @@ export default function DistribucionView({
             )}
             {groups.map((group) => {
               const gs = stats(group.items)
-              const total = group.items.reduce((sum, i) => sum + i.salePrice * i.quantity, 0)
+              const total = group.items.reduce((sum, i) => sum + lineTotal(i), 0)
               const gOpen = isGroupOpen(sectionKey + ':' + group.key)
               return (
                 <div key={group.key} className="border-t border-brand-gray">

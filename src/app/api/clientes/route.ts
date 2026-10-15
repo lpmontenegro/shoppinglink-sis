@@ -7,8 +7,8 @@ export async function GET(req: NextRequest) {
 
   const clients = await prisma.client.findMany({
     where: q
-      ? { fullName: { contains: q, mode: 'insensitive' } }
-      : undefined,
+      ? { isSystem: false, fullName: { contains: q, mode: 'insensitive' } }
+      : { isSystem: false },
     orderBy: { fullName: 'asc' },
   })
 

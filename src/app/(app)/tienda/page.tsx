@@ -13,7 +13,7 @@ export default async function TiendaPage() {
       orderBy: { visitDate: 'desc' },
     }),
     prisma.client.findMany({
-      where: { active: true },
+      where: { active: true, isSystem: false },
       orderBy: { fullName: 'asc' },
       select: { id: true, fullName: true },
     }),

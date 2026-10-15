@@ -29,3 +29,21 @@ export function suggestedSalePriceUsd(
   if (!Number.isFinite(costUsd) || costUsd <= 0) return 0
   return costWithTax(costUsd, taxRatePercent) + suggestedProfitUsd(costUsd)
 }
+
+// Compra directa (courier): el cliente ya compró, solo se cobra la traída.
+// Tarifa de referencia del plan de proyecto: ~$8 por paquete, discrecional
+// si es grande/pesado. Es solo una sugerencia — las dueñas fijan el precio.
+export const COURIER_FEE_USD = 8
+
+// Precio sugerido en Q para un producto, según su tipo. null si no hay con
+// qué calcularlo (compra anticipada sin costo anotado).
+export function suggestedPriceGtq(
+  purchaseType: string,
+  costUsd: number | null,
+  rate: number,
+  taxRatePercent: number = DEFAULT_TAX_RATE
+): number | null {
+  if (purchaseType === 'COURIER') return Math.round(COURIER_FEE_USD * rate)
+  if (costUsd == null || !(costUsd > 0)) return null
+  return Math.round(suggestedSalePriceUsd(costUsd, taxRatePercent) * rate)
+}
